@@ -10,7 +10,7 @@ interface ScoreBarProps {
 
 export function ScoreBar({ score, max = 100, className = '', showMax = false }: ScoreBarProps) {
   const pct = Math.round((score / max) * 100);
-  const color = pct >= 70 ? 'bg-red-500' : pct >= 40 ? 'bg-amber-500' : 'bg-blue-400';
+  const color = pct >= 70 ? 'bg-red-500' : pct >= 40 ? 'bg-amber-500' : 'bg-primary-400';
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <div className="flex-1 bg-slate-100 rounded-full h-1.5 min-w-[3rem]">
@@ -42,6 +42,29 @@ export function SimilarityScore({
   return (
     <div className={`flex items-center gap-2 ${className}`} title={SIMILARITY_HINT}>
       {!compact && <span className="text-xs text-slate-500 whitespace-nowrap">Similarity</span>}
+      <ScoreBar score={score} max={100} showMax className="flex-1 min-w-0" />
+    </div>
+  );
+}
+
+const GROUP_SIMILARITY_HINT =
+  'Group score is the average similarity of every pair in the group (0–100). Strong means 40 or higher. You still decide in review.';
+
+/** Group cohesion: one score, plus Strong or Possible. */
+export function GroupSimilaritySummary({
+  score,
+  confidence,
+  className = '',
+}: {
+  score: number;
+  confidence: 'strong' | 'possible';
+  className?: string;
+}) {
+  return (
+    <div className={`flex items-center gap-2 ${className}`} title={GROUP_SIMILARITY_HINT}>
+      <span className="text-xs font-medium text-slate-600 whitespace-nowrap shrink-0">
+        {confidence === 'strong' ? 'Strong' : 'Possible'}
+      </span>
       <ScoreBar score={score} max={100} showMax className="flex-1 min-w-0" />
     </div>
   );

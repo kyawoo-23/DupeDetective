@@ -35,12 +35,12 @@ const Modal = forwardRef<HTMLDialogElement, ModalProps>(function Modal(
       id="demo-modal"
       aria-labelledby="modal-title"
       onClose={onClose}
-      className="m-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-0 shadow-xl backdrop:bg-slate-900/50 backdrop:backdrop-blur-sm open:flex open:flex-col"
+      className="m-auto w-full max-w-md rounded-lg border border-slate-200 bg-white p-0 shadow-lg backdrop:bg-slate-900/50 open:flex open:flex-col"
     >
       {deleted ? (
         /* Success state */
         <div className="flex flex-col items-center justify-center gap-3 py-12 px-8">
-          <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 text-xl">
+          <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 text-xl">
             ✓
           </div>
           <p className="font-semibold text-slate-800">Project deleted</p>

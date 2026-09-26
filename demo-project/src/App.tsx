@@ -31,19 +31,19 @@ import { AlertModal } from "./components/AlertModal";
 
 function SectionHeader({ title, desc }: { title: string; desc: string }) {
   return (
-    <div className="mb-8">
-      <h2 className="text-2xl font-bold text-slate-900 mb-2" style={{ fontFamily: "'Syne', sans-serif" }}>
+    <div className="mb-5 sm:mb-8 border-t border-slate-200 pt-6 sm:pt-10">
+      <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 mb-2">
         {title}
       </h2>
-      <p className="text-slate-500 text-sm max-w-2xl">{desc}</p>
+      <p className="text-slate-500 text-sm sm:text-base leading-relaxed max-w-2xl">{desc}</p>
     </div>
   );
 }
 
 function ComponentBlock({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">{label}</p>
+    <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-5">
+      <p className="text-sm font-medium text-slate-500 mb-4">{label}</p>
       {children}
     </div>
   );
@@ -88,34 +88,28 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-100 text-slate-800">
       <Navbar onOpenModal={openModal} />
 
-      <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12 space-y-24">
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-12 space-y-16">
 
         {/* ── Hero ──────────────────────────────────────────────────────── */}
-        <section aria-labelledby="hero-heading" className="pt-4">
-          <p className="text-sm font-semibold tracking-wide text-indigo-500 uppercase mb-3">
-            Component showcase
-          </p>
+        <section aria-labelledby="hero-heading" className="pt-6 pb-2">
           <h1
             id="hero-heading"
-            className="text-4xl sm:text-5xl font-bold text-slate-900 leading-tight mb-5"
-            style={{ fontFamily: "'Syne', sans-serif" }}
+            className="text-4xl sm:text-5xl font-semibold tracking-tight text-slate-900 leading-none mb-4"
           >
-            UI patterns{" "}
-            <span className="text-indigo-500">built to last</span>
+            Modules
           </h1>
-          <p className="text-slate-500 text-lg max-w-2xl mb-8">
-            A demo codebase packed with realistic AI-generated component drift —
-            buttons, cards, badges, inputs, loaders, and modals each appear in
-            2–3 near-duplicate variants. Perfect for testing DupeDetective.
+          <p className="text-slate-600 text-lg max-w-xl leading-relaxed mb-8">
+            A working set of interface parts, written more than once.
+            Buttons, cards, labels, inputs, loaders, and dialogs each exist in two or three near-duplicate versions.
           </p>
           <div className="flex flex-wrap gap-3">
             <a href="#section-buttons" className="inline-flex items-center px-5 py-2.5 rounded-lg bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 transition-colors">
               Explore components
             </a>
-            <button type="button" onClick={openModal} className="inline-flex items-center px-5 py-2.5 rounded-lg border border-slate-300 text-slate-700 font-semibold text-sm hover:border-slate-400 hover:bg-white transition-colors">
+            <button type="button" onClick={openModal} className="inline-flex items-center px-5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-semibold text-sm hover:border-slate-400 transition-colors">
               Open dialog
             </button>
           </div>
@@ -345,8 +339,8 @@ export default function App() {
         onDismiss={() => { alertRef.current?.close(); setAlertOpen(false); }}
       />
 
-      <footer className="border-t border-slate-200 mt-24 py-8 text-center text-sm text-slate-400">
-        UI Components Demo — React 18 + Tailwind CSS v4 + Vite
+      <footer className="border-t border-slate-200 mt-16 py-8 text-center text-sm text-slate-500">
+        Modules — a component catalog for DupeDetective
       </footer>
     </div>
   );

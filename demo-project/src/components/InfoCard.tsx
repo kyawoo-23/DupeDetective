@@ -17,7 +17,7 @@ interface InfoCardProps {
 /** Dashboard info card — duplicate of Card with icon slot. */
 export function InfoCard({ icon, heading, body, action, onAction }: InfoCardProps) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col gap-4">
+    <div className="bg-white rounded-lg border border-slate-200 p-6 flex flex-col gap-4">
       <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
         {icon}
       </div>
@@ -29,9 +29,9 @@ export function InfoCard({ icon, heading, body, action, onAction }: InfoCardProp
         <button
           type="button"
           onClick={onAction}
-          className="self-start text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+          className="self-start text-sm font-semibold text-indigo-700 hover:text-indigo-800 transition-colors"
         >
-          {action} →
+          {action}
         </button>
       )}
     </div>

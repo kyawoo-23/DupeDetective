@@ -1,9 +1,10 @@
 # Scan sources
 
-Apply this guide when changing scan input, archive handling, GitHub fetching, or source selection.
+Apply this guide when changing scan input, archive handling, GitHub fetching, the dev-server archive proxy, or source selection.
 
 - Accept public GitHub repositories and project ZIP archives. GitHub scans may target a branch or commit; default to the repository's default branch.
 - Resolve a GitHub reference to a commit SHA and record that SHA in the scan source identity. Fetch an archive for that revision instead of requesting files individually. Explain throttling or retrieval failures and offer ZIP upload.
+- Client GitHub archive fetches go through the same-origin Vite proxies `/__github_api` and `/__github_codeload` in `vite.config.ts`. Those proxies are what let the browser reach zipball and codeload. A static host without them cannot run GitHub scans from the browser.
 - Validate ZIP paths before extraction. Enforce configurable archive size, expanded size, file count, and nesting depth limits; reject malformed and traversal paths. Identify a ZIP scan by a content hash of the archive bytes.
 - Analyze React `.js`, `.jsx`, `.ts`, and `.tsx` source. Skip dependencies, generated output, build output, and configured vendor directories. Surface parse and discovery failures.
 - For repositories with multiple source areas, show the detected roots and let the reviewer select a supported area.

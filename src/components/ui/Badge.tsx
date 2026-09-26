@@ -1,6 +1,6 @@
 import type React from 'react';
 import { getDecisionLabel, getMigrationStatusLabel } from '../../store';
-import type { DecisionType, MigrationStatus } from '../../types';
+import type { DecisionOutcome, MigrationStatus } from '../../types';
 import type { BadgeColor } from './shared';
 
 // ──────────────────────────────────────────
@@ -14,21 +14,21 @@ interface BadgeProps {
 }
 
 const badgeCls: Record<BadgeColor, string> = {
-  blue: 'bg-blue-100 text-blue-800',
-  green: 'bg-emerald-100 text-emerald-800',
-  amber: 'bg-amber-100 text-amber-800',
-  red: 'bg-red-100 text-red-800',
-  purple: 'bg-purple-100 text-purple-800',
-  slate: 'bg-slate-100 text-slate-700',
-  teal: 'bg-teal-100 text-teal-800',
+  blue: 'bg-primary-50 text-primary-800 ring-primary-200',
+  green: 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+  amber: 'bg-amber-50 text-amber-900 ring-amber-200',
+  red: 'bg-red-50 text-red-800 ring-red-200',
+  purple: 'bg-purple-50 text-purple-800 ring-purple-200',
+  slate: 'bg-slate-50 text-slate-700 ring-slate-200',
+  teal: 'bg-teal-50 text-teal-800 ring-teal-200',
 };
+
+const pillClass =
+  'inline-flex w-fit items-center justify-center rounded-full px-2.5 py-0.5 text-xs font-semibold leading-4 whitespace-nowrap ring-1 ring-inset';
 
 export function Badge({ color = 'slate', children, className = '', title }: BadgeProps) {
   return (
-    <span
-      title={title}
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeCls[color]} ${className}`}
-    >
+    <span title={title} className={`${pillClass} ${badgeCls[color]} ${className}`}>
       {children}
     </span>
   );
@@ -37,16 +37,13 @@ export function Badge({ color = 'slate', children, className = '', title }: Badg
 // ──────────────────────────────────────────
 // MigrationStatusBadge
 // ──────────────────────────────────────────
-const migrationStatusStyles: Record<
-  MigrationStatus,
-  { shell: string; dot: string; dotPulse?: boolean }
-> = {
+const migrationStatusStyles: Record<MigrationStatus, { shell: string; dot: string }> = {
   pending: {
-    shell: 'bg-slate-50 text-slate-700 ring-slate-200/90',
-    dot: 'bg-slate-400',
+    shell: badgeCls.amber,
+    dot: 'bg-amber-500',
   },
   complete: {
-    shell: 'bg-emerald-50 text-emerald-800 ring-emerald-200/90',
+    shell: badgeCls.green,
     dot: 'bg-emerald-500',
   },
 };
@@ -55,13 +52,8 @@ export function MigrationStatusBadge({ status }: { status?: MigrationStatus }) {
   if (!status) return null;
   const styles = migrationStatusStyles[status];
   return (
-    <span
-      className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold tracking-tight ring-1 ring-inset ${styles.shell}`}
-    >
-      <span
-        className={`size-1.5 shrink-0 rounded-full ${styles.dot}${styles.dotPulse ? ' motion-safe:animate-pulse' : ''}`}
-        aria-hidden
-      />
+    <span className={`${pillClass} gap-1.5 ${styles.shell}`}>
+      <span className={`size-1.5 shrink-0 rounded-full ${styles.dot}`} aria-hidden />
       {getMigrationStatusLabel(status)}
     </span>
   );
@@ -70,35 +62,34 @@ export function MigrationStatusBadge({ status }: { status?: MigrationStatus }) {
 // ──────────────────────────────────────────
 // DecisionTypeBadge
 // ──────────────────────────────────────────
-const decisionSurfaceStyles: Record<DecisionType, string> = {
-  merge: 'bg-violet-50 text-violet-900 ring-violet-200/90',
-  keep: 'bg-emerald-50 text-emerald-900 ring-emerald-200/90',
+const decisionSurfaceStyles: Record<DecisionOutcome, string> = {
+  merge: badgeCls.blue,
+  partial: badgeCls.amber,
+  keep: badgeCls.green,
 };
 
 export function DecisionTypeBadge({
-  type,
+  outcome,
   tone = 'surface',
   className = '',
 }: {
-  type: DecisionType;
+  outcome: DecisionOutcome;
   tone?: 'surface' | 'onPrimary';
   className?: string;
 }) {
   if (tone === 'onPrimary') {
     return (
       <span
-        className={`inline-flex max-w-[9.5rem] items-center truncate rounded-full border border-white/30 bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold tracking-tight text-white shadow-sm ${className}`}
-        title={getDecisionLabel(type)}
+        className={`${pillClass} max-w-[9.5rem] truncate bg-white/15 text-white ring-white/30 ${className}`}
+        title={getDecisionLabel(outcome)}
       >
-        {getDecisionLabel(type)}
+        {getDecisionLabel(outcome)}
       </span>
     );
   }
   return (
-    <span
-      className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold tracking-tight ring-1 ring-inset ${decisionSurfaceStyles[type]} ${className}`}
-    >
-      {getDecisionLabel(type)}
+    <span className={`${pillClass} ${decisionSurfaceStyles[outcome]} ${className}`}>
+      {getDecisionLabel(outcome)}
     </span>
   );
 }
@@ -106,7 +97,8 @@ export function DecisionTypeBadge({
 // ──────────────────────────────────────────
 // Decision color helper
 // ──────────────────────────────────────────
-export const decisionColors: Record<DecisionType, BadgeColor> = {
-  merge: 'purple',
+export const decisionColors: Record<DecisionOutcome, BadgeColor> = {
+  merge: 'blue',
+  partial: 'amber',
   keep: 'green',
 };

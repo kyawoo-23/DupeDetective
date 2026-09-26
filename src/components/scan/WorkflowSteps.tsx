@@ -1,4 +1,4 @@
-// Workflow steps hero section on the landing page
+// How component detection and matching lead to review.
 
 type WorkflowIconKind = 'project' | 'review' | 'decision';
 
@@ -10,20 +10,23 @@ const workflowSteps: {
 }[] = [
   {
     number: '01',
-    title: 'Add a project',
-    description: 'Use a public GitHub repository or a ZIP of your source.',
+    title: 'Detect components',
+    description:
+      'Read .js, .jsx, .ts, and .tsx files for capitalized functions and classes that produce JSX. Only exported components are matched.',
     icon: 'project',
   },
   {
     number: '02',
-    title: 'Review matches',
-    description: 'Compare structure, props, code, and available previews.',
+    title: 'Score similarities',
+    description:
+      'Compare markup, class names, prop roles, name families, and events. Rare shared details carry more weight.',
     icon: 'review',
   },
   {
     number: '03',
-    title: 'Capture decisions',
-    description: 'Build a backlog and reusable component guidance.',
+    title: 'Review groups',
+    description:
+      'Group components by average score. Inspect source and previews, then decide what merges and what stays separate.',
     icon: 'decision',
   },
 ];
@@ -31,30 +34,29 @@ const workflowSteps: {
 export function WorkflowSteps() {
   return (
     <section className="w-full max-w-5xl border-t border-slate-200 pt-8 lg:pt-12">
-      <p className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-        Component review workspace
+      <p className="mb-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-primary-700">
+        How the scan works
       </p>
       <h2 className="mx-auto max-w-4xl text-center text-3xl font-semibold leading-[1.1] tracking-tight text-slate-950 sm:text-4xl lg:text-5xl">
         Find the overlap. Decide what stays.
       </h2>
       <p className="mx-auto mt-5 max-w-2xl text-center text-base leading-7 text-slate-600">
-        Scan a React project for similar components, inspect the source and previews, then record
-        each decision with evidence.
+        The scan suggests candidates from source code. You make the final call on every group.
       </p>
       <ol className="mt-8 grid gap-8 pt-8 sm:grid-cols-3 sm:gap-6">
         {workflowSteps.map((step) => (
           <li key={step.number} className="flex flex-col items-center text-center">
             <span
-              className="flex size-12 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 shadow-sm"
+              className="flex size-12 items-center justify-center rounded-xl border border-primary-200 bg-primary-50 text-primary-700 shadow-sm"
               aria-hidden="true"
             >
               <WorkflowIcon kind={step.icon} />
             </span>
-            <span className="mt-3 font-mono text-xs font-semibold tracking-wider text-blue-700">
+            <span className="mt-3 font-mono text-xs font-semibold tracking-wider text-primary-700">
               {step.number}
             </span>
             <h3 className="mt-1 text-sm font-semibold text-slate-900">{step.title}</h3>
-            <p className="mt-1 max-w-56 text-sm leading-5 text-slate-500">{step.description}</p>
+            <p className="mt-1 max-w-64 text-sm leading-6 text-slate-500">{step.description}</p>
           </li>
         ))}
       </ol>

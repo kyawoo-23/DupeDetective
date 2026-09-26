@@ -1,8 +1,8 @@
 // Main scan orchestration
 
+import * as babelParser from '@babel/parser';
 import { makeScanId } from '../store';
 import type { ParseError, ReactComponent, Scan } from '../types';
-import * as babelParser from '@babel/parser';
 import { extractZip, fetchGitHubArchive, parseGitHubUrl } from './fs';
 import { parseFile } from './parser';
 import { buildCandidateGroups } from './scorer';
@@ -19,14 +19,20 @@ export function attachLocalPreviewImports(components: ReactComponent[], files: S
     byFile.set(component.file, group);
   }
   const imports = new Map<string, Map<string, { file: string; exported: string }>>();
-  const originalDependencies = new Map(components.map((component) => [component.id, component.previewDependencies]));
+  const originalDependencies = new Map(
+    components.map((component) => [component.id, component.previewDependencies])
+  );
   const paths = new Set(files.map((file) => file.path));
   for (const file of files) {
     const entries = new Map<string, { file: string; exported: string }>();
     try {
-      const ast = babelParser.parse(file.content, { sourceType: 'module', plugins: ['jsx', 'typescript'] });
+      const ast = babelParser.parse(file.content, {
+        sourceType: 'module',
+        plugins: ['jsx', 'typescript'],
+      });
       for (const statement of ast.program.body) {
-        if (statement.type !== 'ImportDeclaration' || !statement.source.value.startsWith('.')) continue;
+        if (statement.type !== 'ImportDeclaration' || !statement.source.value.startsWith('.'))
+          continue;
         const parts = [...file.path.split('/').slice(0, -1), ...statement.source.value.split('/')];
         const resolved: string[] = [];
         for (const part of parts) {
@@ -34,16 +40,27 @@ export function attachLocalPreviewImports(components: ReactComponent[], files: S
           else if (part && part !== '.') resolved.push(part);
         }
         const base = resolved.join('/');
-        const target = [base, `${base}.tsx`, `${base}.jsx`, `${base}.ts`, `${base}.js`, `${base}/index.tsx`, `${base}/index.jsx`].find((candidate) => paths.has(candidate));
+        const target = [
+          base,
+          `${base}.tsx`,
+          `${base}.jsx`,
+          `${base}.ts`,
+          `${base}.js`,
+          `${base}/index.tsx`,
+          `${base}/index.jsx`,
+        ].find((candidate) => paths.has(candidate));
         if (!target) continue;
         for (const specifier of statement.specifiers) {
-          if (specifier.type === 'ImportDefaultSpecifier') entries.set(specifier.local.name, { file: target, exported: 'default' });
+          if (specifier.type === 'ImportDefaultSpecifier')
+            entries.set(specifier.local.name, { file: target, exported: 'default' });
           if (specifier.type === 'ImportSpecifier' && specifier.imported.type === 'Identifier') {
             entries.set(specifier.local.name, { file: target, exported: specifier.imported.name });
           }
         }
       }
-    } catch { /* parser diagnostics are already recorded by parseFile */ }
+    } catch {
+      /* parser diagnostics are already recorded by parseFile */
+    }
     imports.set(file.path, entries);
   }
 
@@ -58,12 +75,20 @@ export function attachLocalPreviewImports(components: ReactComponent[], files: S
         const imported = imports.get(current.file)?.get(localName);
         if (!imported) continue;
         const target = (byFile.get(imported.file) ?? []).find((candidate) =>
-          imported.exported === 'default' ? candidate.exportType === 'default' : candidate.name === imported.exported && candidate.exportType === 'named'
+          imported.exported === 'default'
+            ? candidate.exportType === 'default'
+            : candidate.name === imported.exported && candidate.exportType === 'named'
         );
         if (!target) continue;
         const key = `${target.file}:${target.name}`;
         if (seen.has(key)) continue;
-        const snippet = [originalDependencies.get(target.id), target.source, localName === target.name ? '' : `const ${localName} = ${target.name};`].filter(Boolean).join('\n');
+        const snippet = [
+          originalDependencies.get(target.id),
+          target.source,
+          localName === target.name ? '' : `const ${localName} = ${target.name};`,
+        ]
+          .filter(Boolean)
+          .join('\n');
         if (bytes + snippet.length > 100_000) continue;
         seen.add(key);
         collect(target, depth + 1);
@@ -72,7 +97,10 @@ export function attachLocalPreviewImports(components: ReactComponent[], files: S
       }
     };
     collect(component, 0);
-    if (snippets.length) component.previewDependencies = [...snippets, originalDependencies.get(component.id)].filter(Boolean).join('\n');
+    if (snippets.length)
+      component.previewDependencies = [...snippets, originalDependencies.get(component.id)]
+        .filter(Boolean)
+        .join('\n');
   }
 }
 
@@ -103,7 +131,8 @@ export async function runZipScan(file: File, onProgress?: (msg: string) => void)
     components,
     groups,
     parseErrors,
-    decisions: [],
+    groupDecisions: [],
+    analysisVersion: 2,
   };
 }
 
@@ -147,6 +176,7 @@ export async function runGitHubScan(
     components,
     groups,
     parseErrors,
-    decisions: [],
+    groupDecisions: [],
+    analysisVersion: 2,
   };
 }

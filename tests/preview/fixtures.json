@@ -1,0 +1,244 @@
+[
+  {
+    "name": "Function",
+    "source": "export function Function({title}) {return <h1>{title}</h1>}",
+    "text": "Title"
+  },
+  {
+    "name": "Arrow",
+    "source": "export const Arrow = ({label}) => <button>{label}</button>",
+    "text": "Label"
+  },
+  {
+    "name": "Nested",
+    "source": "import {memo,forwardRef} from 'react'; export const Nested = memo(forwardRef(({title},ref) => <h2 ref={ref}>{title}</h2>));",
+    "text": "Title"
+  },
+  {
+    "name": "AnonymousArrow",
+    "source": "export default () => <p>Anonymous arrow</p>",
+    "text": "Anonymous arrow"
+  },
+  {
+    "name": "AnonymousFunction",
+    "source": "export default function () {return <p>Anonymous function</p>}",
+    "text": "Anonymous function"
+  },
+  {
+    "name": "AnonymousMemo",
+    "source": "export default React.memo(() => <p>Anonymous memo</p>);",
+    "text": "Anonymous memo"
+  },
+  {
+    "name": "Class",
+    "source": "import {Component} from 'react'; export class Card extends Component {render(){return <h1>{this.props.title}</h1>}}",
+    "text": "Title"
+  },
+  {
+    "name": "Null",
+    "source": "export function Null(){return null}",
+    "empty": true
+  },
+  {
+    "name": "False",
+    "source": "export const False = () => false",
+    "empty": true
+  },
+  {
+    "name": "EmptyFragment",
+    "source": "export const EmptyFragment = () => <></>",
+    "empty": true
+  },
+  {
+    "name": "Hidden",
+    "source": "export const Hidden = () => <div hidden>Secret</div>",
+    "empty": true
+  },
+  {
+    "name": "Text",
+    "source": "export const Text = () => 'Text output'",
+    "text": "Text output"
+  },
+  {
+    "name": "CreateElement",
+    "source": "import {createElement} from 'react'; export function Card(){return createElement('h1',null,'No JSX')}",
+    "text": "No JSX"
+  },
+  {
+    "name": "Portal",
+    "source": "import {createPortal} from 'react-dom'; export const Portal = () => createPortal(<p>Portal content</p>,document.body)",
+    "text": "Portal content"
+  },
+  {
+    "name": "Hooks",
+    "source": "import {useReducer,useId,useLayoutEffect} from 'react'; export function Counter(){const [n]=useReducer(x=>x+1,7); const id=useId();useLayoutEffect(()=>{},[]);return <p id={id}>Count {n}</p>}",
+    "text": "Count 7"
+  },
+  {
+    "name": "Compound",
+    "source": "import {Menu} from 'library'; export const Card = () => <Menu><Menu.Item>Menu item</Menu.Item></Menu>",
+    "text": "Menu item"
+  },
+  {
+    "name": "List",
+    "source": "export function List({items}){return <ul>{items.map(item=><li key={item.id}>{item.user.name}</li>)}</ul>}",
+    "text": "name"
+  },
+  {
+    "name": "Alias",
+    "source": "export function Alias({user:person}){return <p>{person.profile.name}</p>}",
+    "text": "name"
+  },
+  {
+    "name": "PropsObject",
+    "source": "export function Card(props){return <p>{props.user.name}</p>}",
+    "text": "name"
+  },
+  {
+    "name": "Context",
+    "source": "import {useContext} from 'react'; import {UserContext} from './contexts'; export function Card(){const user=useContext(UserContext);return <p>{user.name}</p>}",
+    "text": "Mock name"
+  },
+  {
+    "name": "Translation",
+    "source": "import {useTranslation} from 'react-i18next'; export function Card(){const {t}=useTranslation();return <p>{t('common.helloWorld')}</p>}",
+    "text": "Hello World"
+  },
+  {
+    "name": "Recursive",
+    "source": "export function Tree({depth=0}){return <div>{depth>0?<Tree depth={depth-1}/>: 'Leaf'}</div>}",
+    "text": "Leaf"
+  },
+  {
+    "name": "RenderProp",
+    "source": "import {Draggable} from 'library'; export function Card(){return <Draggable>{({innerRef},{isDragging})=><p ref={innerRef}>{isDragging?'Dragging':'Item'}</p>}</Draggable>}",
+    "text": "Item"
+  },
+  {
+    "name": "Error",
+    "source": "export function Broken(){throw new Error('intentional failure');return <div/>}",
+    "error": "intentional failure"
+  },
+  {
+    "name": "TypedList",
+    "source": "type Props={items: {id:string; title:string}[]};export function List({items}:Props){return <ul>{items.map(item=><li key={item.id}>{item.title}</li>)}</ul>}",
+    "text": "title"
+  },
+  {
+    "name": "ElementProp",
+    "source": "export function Card({children}){return React.cloneElement(children,{title:'test'})};Card.propTypes={children:PropTypes.element.isRequired};",
+    "text": "Example content"
+  },
+  {
+    "name": "ClassExpression",
+    "source": "export const Card = class extends React.Component {render(){return <p>Class expression</p>}}",
+    "text": "Class expression"
+  },
+  {
+    "name": "AnonymousClass",
+    "source": "export default class extends React.PureComponent {render(){return <p>Anonymous class</p>}}",
+    "text": "Anonymous class"
+  },
+  {
+    "name": "HookAlias",
+    "source": "import {useState as state} from 'react';export function Card(){const [n]=state(8);return <p>Value {n}</p>}",
+    "text": "Value 8"
+  },
+  {
+    "name": "Namespace",
+    "source": "import * as R from 'react';export function Card(){return R.createElement('p',null,'Namespace')}",
+    "text": "Namespace"
+  },
+  {
+    "name": "SymbolCollision",
+    "source": "export function Suspense(){return <p>Local Suspense</p>}",
+    "text": "Local Suspense"
+  },
+  {
+    "name": "NullClass",
+    "source": "export class Empty extends React.Component {render(){return null}}",
+    "empty": true
+  },
+  {
+    "name": "EffectUI",
+    "source": "export function Card(){const [ready,setReady]=React.useState(false);React.useEffect(()=>{setReady(true)},[]);return ready?<p>After effect</p>:null}",
+    "text": "After effect"
+  },
+  {
+    "name": "SVG",
+    "source": "export const Shape = () => <svg width='20' height='20'><circle cx='10' cy='10' r='8'/></svg>",
+    "empty": false
+  },
+  {
+    "name": "RenderPropInput",
+    "source": "export function Card({children}){return <div>{children({name:'Mock'})}</div>};Card.propTypes={children:PropTypes.func};",
+    "text": "Mock content"
+  },
+  {
+    "name": "StaticDependency",
+    "source": "const labels={save:'Save'};export function Card(){return <button>{labels.save}</button>}",
+    "text": "Save"
+  },
+  {
+    "name": "ErrorEffect",
+    "source": "export function Broken(){React.useEffect(()=>{throw new Error('effect failure')},[]);return <p>UI</p>}",
+    "error": "effect failure"
+  },
+  {
+    "name": "ProviderOnly",
+    "source": "const Context=React.createContext(null);export function Provider(){return <Context.Provider value='value'/>}",
+    "empty": true
+  },
+  {
+    "name": "NestedDestructure",
+    "source": "export function Card({user:{profile:{name}}}){return <p>{name}</p>}",
+    "text": "name"
+  },
+  {
+    "name": "PropTypesArray",
+    "source": "export function List({items}){return <ul>{items.map(item=><li>{item.name}</li>)}</ul>};List.propTypes={items:PropTypes.array};",
+    "text": "name"
+  },
+  {
+    "name": "Date",
+    "source": "export function Time({date}){return <time>{date.toISOString()}</time>};Time.propTypes={date:PropTypes.instanceOf(Date)};",
+    "text": "2026-01-15"
+  },
+  {
+    "name": "NoUIHookFactory",
+    "source": "export default () => { const Widget=()=> <div/>;return [Widget,()=>{}] }",
+    "file": "use-widget.jsx",
+    "empty": true
+  },
+  {
+    "name": "ScriptEscaping",
+    "source": "export function Card(){return <p>{'</script><script>throw new Error(123)</script>'}</p>}",
+    "text": "</script>"
+  },
+  {
+    "name": "OpacityHidden",
+    "source": "export function Invisible(){return <div style={{opacity:0}}><p>Invisible</p></div>}",
+    "empty": true
+  },
+  {
+    "name": "StringArray",
+    "source": "export function List({items}:{items:string[]}){return <ul>{items.map(item=><li>{item}</li>)}</ul>}",
+    "text": "Example item"
+  },
+  {
+    "name": "UtilityNotComponent",
+    "file": "match-paths.js",
+    "source": "export default (value)=>{if(value)return value;return null}",
+    "discovered": false
+  },
+  {
+    "name": "UntypedRenderProp",
+    "source": "export function Card({children}){return <div>{children({name:'Mock'})}</div>}",
+    "text": "Mock content"
+  },
+  {
+    "name": "BrowserGlobalComponent",
+    "source": "import {Image} from 'library';export function Picture(){return <Image/>}",
+    "text": "Image (placeholder)"
+  }
+]

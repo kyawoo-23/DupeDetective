@@ -6,11 +6,14 @@ interface EmptyProps {
   icon?: React.ReactNode;
   title: string;
   description?: string;
+  className?: string;
 }
 
-export function Empty({ icon, title, description }: EmptyProps) {
+export function Empty({ icon, title, description, className = '' }: EmptyProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+    <div
+      className={`flex flex-col items-center justify-center py-16 gap-3 text-center ${className}`}
+    >
       {icon && <div className="text-slate-300 mb-1">{icon}</div>}
       <p className="text-sm font-medium text-slate-700">{title}</p>
       {description && <p className="text-xs text-slate-400 max-w-xs">{description}</p>}

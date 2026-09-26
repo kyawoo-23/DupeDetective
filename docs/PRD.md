@@ -10,7 +10,7 @@ DupeDetective is a web application for finding and reviewing similar React compo
 
 A reviewer starts a scan by entering a public GitHub repository URL or uploading a ZIP file. The system analyzes React JavaScript and TypeScript code with deterministic rules, groups likely matches, and explains the evidence. It attempts to render the components with editable mock props in an isolated preview.
 
-A person decides whether to merge the components or keep them separate. The website records those decisions within the scan and generates a backlog, component guidance, and copyable instructions for a coding agent.
+A person decides whether to merge each candidate group or keep its components separate. The website records group decisions within the scan and generates a backlog and copyable instructions for a coding agent.
 
 Every scan is independent. A new scan starts without decisions or records from previous scans. Previous scans may remain available as separate sessions.
 
@@ -26,8 +26,8 @@ Help a frontend reviewer:
 
 1. Scan a public GitHub repository or uploaded ZIP for likely similar React components.
 2. Inspect the code evidence and best-effort previews.
-3. Record and explain a decision for each reviewed relationship.
-4. Generate follow-up work and component guidance for the current scan.
+3. Record and explain one decision for each reviewed candidate group.
+4. Generate follow-up work for the current scan.
 5. Copy a structured repair instruction into a coding agent when a merge is needed.
 
 ## 4. Target user
@@ -42,7 +42,7 @@ The hackathon demo is presented manually by the project owner. It does not requi
 - **Deterministic detection:** Candidate analysis uses code structure and fixed rules. It does not rely on AI.
 - **Visible evidence:** The interface explains which code signals contributed to a match.
 - **Best-effort previews:** The system attempts to render components and provides source evidence when a preview fails.
-- **Scan isolation:** Decisions, suppressions, and outputs from one scan are not carried into a later scan.
+- **Scan isolation:** Decisions and outputs from one scan are not carried into a later scan.
 - **No source changes:** The website does not write to the scanned repository.
 
 ## 6. Hackathon scope
@@ -58,7 +58,7 @@ The hackathon demo is presented manually by the project owner. It does not requi
 - A review queue and side-by-side comparison.
 - Isolated, best-effort component previews with editable mock props.
 - Human decisions, rationale, and migration status.
-- A Markdown backlog and `component-guidelines.md` generated within the website for each scan.
+- A Markdown backlog generated within the website for each scan.
 - Individual and combined copyable coding-agent instructions.
 
 ### Out of scope
@@ -122,9 +122,10 @@ The first version uses a transparent combination of:
 
 ### 8.3 Candidate ranking and explanation
 
-- Use fixed, deterministic rules to rank pairs and groups.
-- Display matched signals in plain language, such as “same JSX nesting and 4 of 5 prop names overlap.”
-- Treat scores as review ordering, not probability or a duplicate verdict.
+- Use fixed, deterministic rules to score pairs and group them by average similarity.
+- Weight shared tags, classes, and props by how rare they are in the scan, so common structure counts for less than a distinctive match.
+- Display matched signals in plain language, such as “root `<dialog>`, shared props tone and text.”
+- A group's score is the average of every pair in the group. Treat scores as review ordering, not probability or a duplicate verdict.
 - Keep the initial weights simple and tune them using the chosen demo repository.
 - Do not use screenshot similarity as a required signal in the hackathon build.
 
@@ -162,34 +163,41 @@ Label generated values as mock data. Allow the reviewer to change them and reren
 2. **Choose the revision:** For GitHub input, choose an optional branch or commit.
 3. **Review scan results:** See supported components and ranked candidate groups with match explanations.
 4. **Compare candidates:** Inspect best-effort previews, mock-prop controls, prop signatures, source paths, and focused source structure.
-5. **Choose a relationship:** Review a pair or subset within a group.
-6. **Record a decision:** Select a disposition and provide the required rationale.
+5. **Review a candidate group:** Compare pairs as evidence, then assign each member a role: the component to keep, the members that merge into it, and the members that stay separate. The score threshold hides whole groups below the minimum. It does not change membership.
+6. **Save the group decision:** Merging requires one component to keep, at least one member to merge, and a note. Keeping everyone separate may include an optional note.
 7. **Prepare follow-up work:** Copy an individual or combined coding-agent instruction from the UI.
 8. **Track cleanup:** Move merge work from Pending to Complete.
-9. **Generate scan outputs:** View the backlog and component guidelines for this scan in the website.
+9. **Generate scan outputs:** View the backlog and agent instructions for this scan in the website.
 
 ## 11. Decision types and status
 
+A group decision gives every member one role:
+
+- **Target:** the component to keep. There is at most one.
+- **Merge:** fold this component into the target.
+- **Separate:** leave this component as it is.
+
 ### Merge
 
-The components should become one.
+At least one member folds into the target. Other members may stay separate. That is a partial merge.
 
-- Require the component to keep and a note.
-- Create a migration backlog item.
-- Provide an individual coding-agent instruction and include the decision in combined instructions when selected.
+- Require the component to keep, at least one component to merge, and a note.
+- Create one migration backlog item for the decision.
+- Provide an individual coding-agent instruction and include the decision in combined instructions when selected. Name members that stay separate so they are not folded in.
 - Mark as Complete only after reviewer confirmation. A short note about what changed or was checked is optional.
-- Include the kept component in this scan’s guidelines only after it is marked Complete.
+- Mark Complete only updates backlog status for this scan.
+- Changing the target or which members merge resets a completed migration to Pending.
 
 ### Keep separate
 
-The components stay as they are.
+Every member stays as it is.
 
 - A note is optional.
-- If the note is filled in, record the decision in this scan’s guidelines.
-- If the note is blank, treat the match as dismissed: remove it from this scan’s active queue, and do not add a guideline or backlog item.
-- Do not create a suppression. A future scan evaluates the source independently and may surface the pair again.
+- If the note is filled in, store it on the decision for this scan.
+- A saved Keep separate verdict moves the group out of the active queue and creates no backlog item.
+- Do not create a suppression. A future scan evaluates the source independently and may surface the group again.
 
-Every decision records the reviewer, timestamp, affected component IDs, a note when required, and migration status where applicable.
+Every group decision records its group ID, timestamp, a role for each member, a note when required, and migration status where applicable.
 
 ## 12. Per-scan records and isolation
 
@@ -198,14 +206,14 @@ Every decision records the reviewer, timestamp, affected component IDs, a note w
   - GitHub URL plus resolved commit SHA, or
   - ZIP content hash.
 - Keep prior scans as separate saved sessions if retained.
-- Starting a new scan imports no previous decisions, rationale, statuses, guidelines, backlogs, or suppressions.
+- Starting a new scan imports no previous decisions, rationale, statuses, backlogs, or suppressions.
 - Generate all outputs from the current scan only.
 
 ## 13. Generated outputs
 
 ### 13.1 Merge backlog
 
-Show a Markdown backlog in the website and allow the reviewer to copy or download it. Each item includes:
+Show a Markdown backlog in the website and allow the reviewer to copy it. Each item includes:
 
 - Decision and affected components.
 - Source paths.
@@ -214,26 +222,16 @@ Show a Markdown backlog in the website and allow the reviewer to copy or downloa
 - Status and suggested next step.
 - Optional reviewer note after completion.
 
-Create items only for merge decisions.
+Create one item per decision that merges at least one component. List components to replace and components to leave unchanged. Keep separate decisions create no item.
 
-### 13.2 Component guidelines
-
-Generate a Markdown document named `component-guidelines.md` for the current scan. Include:
-
-- Completed merges and the component to keep.
-- Keep-separate decisions that include a note.
-- Proposed merges in a clearly marked pending section.
-
-Only completed merges name a component to keep. A keep-separate decision with a blank note does not appear.
-
-### 13.3 Coding-agent instructions
+### 13.2 Coding-agent instructions
 
 Display copyable instructions in the review UI:
 
-- One instruction for each Merge decision.
+- One instruction for each merged group.
 - One combined instruction covering all pending decisions by default, with controls to select a smaller group.
 
-Instructions name the component to keep, affected paths, required behavior to preserve, and suggested checks. The reviewer runs them manually in a coding agent. The website does not send them to an agent or modify code.
+Instructions name the component to keep, components to replace, components to leave unchanged, required behavior to preserve, and suggested checks. The reviewer runs them manually in a coding agent. The website does not send them to an agent or modify code.
 
 ## 14. Success criteria
 
@@ -245,8 +243,8 @@ The demo succeeds when:
 - Candidate groups explain why their members were matched.
 - The reviewer can inspect previews when available and continue with source evidence when they fail.
 - Mock props can be changed and the preview rerendered.
-- A reviewer can compare and decide on a candidate in under 30 seconds.
-- Decisions update the current scan’s backlog and guidelines.
+- A reviewer can compare evidence and decide on a candidate group in under 30 seconds.
+- Decisions update the current scan’s backlog.
 - A completed merge names the component to keep only after reviewer confirmation.
 - The UI presents individual and combined copyable repair instructions.
 - A new scan starts without importing any prior scan state.
@@ -261,7 +259,7 @@ The demo succeeds when:
 5. Record a Merge decision and choose the component to keep.
 6. Copy the generated repair instruction and show its expected checks.
 7. Mark the migration Complete with reviewer confirmation and an optional note.
-8. Show the updated backlog and component guidelines for that scan.
+8. Show the updated backlog for that scan.
 9. Start a second scan and show that it begins with no decisions from the first.
 
 The presenter chooses the repository and demo pairs ahead of time. The website does not provide a preloaded sample repo.
@@ -272,5 +270,5 @@ The presenter chooses the repository and demo pairs ahead of time. The website d
 2. **Build deterministic indexing:** Discover React components, extract AST-based features, rank candidates, and display match explanations.
 3. **Prove isolated previewing:** Render a supported component with generated mock props; provide source fallback for unsupported imports or runtime errors.
 4. **Build review workspace:** Add queue, comparison details, decision forms, reviewer records, and migration statuses.
-5. **Generate outputs:** Produce the scan-specific backlog, guidelines, and individual/combined coding-agent instructions.
+5. **Generate outputs:** Produce the scan-specific backlog and individual/combined coding-agent instructions.
 6. **Prepare the manual demo:** Rehearse against a presenter-selected public React project and use a static source-comparison fallback if rendering fails.

@@ -71,7 +71,7 @@ export default function ButtonGroup() {
         {/* Toggle group */}
         <ComponentBlock label="Toggle group">
           <div
-            className="inline-flex rounded-lg border border-slate-300 overflow-hidden"
+            className="inline-flex rounded-lg border border-slate-200 overflow-hidden"
             role="group"
             aria-label="View mode"
           >
@@ -101,22 +101,19 @@ export default function ButtonGroup() {
 
 export function SectionHeader({ title, desc }: { title: string; desc: string }) {
   return (
-    <div className="mb-8">
-      <h2
-        className="text-2xl font-bold text-slate-900 mb-2"
-        style={{ fontFamily: "'Syne', sans-serif" }}
-      >
+    <div className="mb-5 sm:mb-8 border-t border-slate-200 pt-6 sm:pt-10">
+      <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-slate-900 mb-2">
         {title}
       </h2>
-      <p className="text-slate-500 text-sm max-w-2xl">{desc}</p>
+      <p className="text-slate-500 text-sm sm:text-base leading-relaxed max-w-2xl">{desc}</p>
     </div>
   );
 }
 
 export function ComponentBlock({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
-      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">{label}</p>
+    <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-5">
+      <p className="text-sm font-medium text-slate-500 mb-4">{label}</p>
       {children}
     </div>
   );

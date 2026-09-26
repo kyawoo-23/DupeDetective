@@ -1,21 +1,13 @@
-// Queue tab — pending/decided groups and per-pair review
+// Queue tab — one verdict per candidate group. Pairs stay inside the group review.
 
-import { useShallow } from 'zustand/react/shallow';
-import { useAppStore } from '../../store';
-import type { CandidateGroup, CandidatePair, Scan } from '../../types';
-import { ReviewPanel } from '../review/ReviewPanel';
-import {
-  Badge,
-  Card,
-  DecisionTypeBadge,
-  Empty,
-  RowButton,
-  SignalBadge,
-  SimilarityScore,
-} from '../ui';
+import { decisionOutcome, decisionSummary } from '../../lib/decisions';
+import { evidenceHighlights, GROUP_THRESHOLD, STRONG_GROUP_SCORE } from '../../lib/scorer';
+import type { CandidateGroup, Scan } from '../../types';
+import { GroupReviewPanel } from '../review/GroupReviewPanel';
+import { Card, ComponentTagList, DecisionTypeBadge, Empty, GroupSimilaritySummary } from '../ui';
 
-const DEFAULT_MIN_SCORE = 50;
-const SCORE_OPTIONS = [30, 40, 50, 60, 70];
+const DEFAULT_MIN_SCORE = GROUP_THRESHOLD;
+const SCORE_OPTIONS = [GROUP_THRESHOLD, STRONG_GROUP_SCORE, 50];
 
 export { DEFAULT_MIN_SCORE, SCORE_OPTIONS };
 
@@ -24,11 +16,14 @@ interface QueueTabProps {
   pendingGroups: CandidateGroup[];
   decidedGroups: CandidateGroup[];
   minScore: number;
-  hiddenPairs: number;
+  hiddenGroups: number;
   onMinScoreChange: (score: number) => void;
-  selectedPair: { group: CandidateGroup; pair: CandidatePair } | null;
-  onSelectPair: (g: CandidateGroup, p: CandidatePair) => void;
+  selectedGroup: CandidateGroup | null;
+  selectedPairId: string | null;
+  onSelectGroup: (group: CandidateGroup) => void;
+  onSelectPair: (pairId: string) => void;
   onCloseReview: () => void;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
 export function QueueTab({
@@ -36,19 +31,25 @@ export function QueueTab({
   pendingGroups,
   decidedGroups,
   minScore,
-  hiddenPairs,
+  hiddenGroups,
   onMinScoreChange,
-  selectedPair,
+  selectedGroup,
+  selectedPairId,
+  onSelectGroup,
   onSelectPair,
   onCloseReview,
+  onDirtyChange,
 }: QueueTabProps) {
-  if (selectedPair) {
+  if (selectedGroup) {
     return (
-      <ReviewPanel
+      <GroupReviewPanel
+        key={`${scan.id}:${selectedGroup.id}`}
         scan={scan}
-        group={selectedPair.group}
-        pair={selectedPair.pair}
+        group={selectedGroup}
+        selectedPairId={selectedPairId}
+        onSelectPair={(pair) => onSelectPair(pair.id)}
         onBack={onCloseReview}
+        onDirtyChange={onDirtyChange}
       />
     );
   }
@@ -60,16 +61,16 @@ export function QueueTab({
           <h2 className="text-base font-semibold text-slate-900">
             Pending review <span className="text-slate-500">({pendingGroups.length})</span>
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5" aria-live="polite">
-            {hiddenPairs > 0
-              ? `${hiddenPairs} ${hiddenPairs === 1 ? 'pair' : 'pairs'} below ${minScore} hidden`
-              : 'All candidate pairs shown'}
+          <p className="mt-0.5 text-xs text-slate-500" aria-live="polite">
+            {hiddenGroups > 0
+              ? `${hiddenGroups} ${hiddenGroups === 1 ? 'group is' : 'groups are'} hidden below ${minScore}.`
+              : `Showing groups scored ${minScore} or higher.`}
           </p>
         </div>
         <div className="flex items-center justify-between gap-3 sm:justify-start">
           <label
             htmlFor="queue-min-score"
-            className="text-sm font-medium text-slate-600 whitespace-nowrap"
+            className="whitespace-nowrap text-sm font-medium text-slate-600"
           >
             Minimum score
           </label>
@@ -77,13 +78,15 @@ export function QueueTab({
             id="queue-min-score"
             value={String(minScore)}
             onChange={(event) => onMinScoreChange(Number(event.target.value))}
-            className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:min-h-0 sm:min-w-40 sm:flex-none sm:text-sm"
+            className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-base text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary-500 sm:min-h-0 sm:min-w-40 sm:flex-none sm:text-sm"
           >
             {SCORE_OPTIONS.map((score) => (
               <option key={score} value={score}>
-                {score === 30
-                  ? 'All candidates (30+)'
-                  : `${score}+${score === DEFAULT_MIN_SCORE ? ' · default' : ''}`}
+                {score === GROUP_THRESHOLD
+                  ? `All groups (${GROUP_THRESHOLD}+)`
+                  : score === STRONG_GROUP_SCORE
+                    ? `Strong (${STRONG_GROUP_SCORE}+)`
+                    : `${score}+`}
               </option>
             ))}
           </select>
@@ -91,40 +94,35 @@ export function QueueTab({
       </div>
       {pendingGroups.length === 0 && decidedGroups.length === 0 && (
         <Empty
-          title={hiddenPairs > 0 ? 'No pairs meet this score' : 'No candidate groups found'}
+          title={hiddenGroups > 0 ? 'No groups meet this score' : 'No candidate groups found'}
           description={
-            hiddenPairs > 0
-              ? 'Lower the minimum score to see more candidates.'
+            hiddenGroups > 0
+              ? 'Lower the minimum score to see more groups.'
               : 'No similar React components were detected. Try a repository with more components.'
           }
         />
       )}
       {pendingGroups.length > 0 && (
         <section>
-          <p className="text-sm text-slate-600 mb-4 max-w-3xl">
-            Scores help prioritize review. Open a pair to compare before deciding.
+          <p className="mb-4 max-w-3xl text-sm text-slate-600">
+            Each row is one group. Open it to compare the members, then decide which component to
+            keep and which ones fold into it.
           </p>
           <div className="flex flex-col gap-3">
             {pendingGroups.map((group) => (
-              <GroupCard key={group.id} group={group} scan={scan} onSelectPair={onSelectPair} />
+              <GroupCard key={group.id} group={group} scan={scan} onSelectGroup={onSelectGroup} />
             ))}
           </div>
         </section>
       )}
       {decidedGroups.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">
             Reviewed ({decidedGroups.length})
           </h2>
           <div className="flex flex-col gap-3">
             {decidedGroups.map((group) => (
-              <GroupCard
-                key={group.id}
-                group={group}
-                scan={scan}
-                onSelectPair={onSelectPair}
-                decided
-              />
+              <GroupCard key={group.id} group={group} scan={scan} onSelectGroup={onSelectGroup} />
             ))}
           </div>
         </section>
@@ -136,66 +134,45 @@ export function QueueTab({
 function GroupCard({
   group,
   scan,
-  onSelectPair,
-  decided,
+  onSelectGroup,
 }: {
   group: CandidateGroup;
   scan: Scan;
-  onSelectPair: (g: CandidateGroup, p: CandidatePair) => void;
-  decided?: boolean;
+  onSelectGroup: (group: CandidateGroup) => void;
 }) {
-  const pairIds = group.pairs.map((p) => p.id);
-  const decisions = useAppStore(
-    useShallow((_s) => scan.decisions.filter((d) => pairIds.includes(d.pairId)))
-  );
+  const decision = scan.groupDecisions.find((item) => item.groupId === group.id);
+  const highlights = evidenceHighlights(group);
 
   return (
-    <Card className={`min-w-0 p-4 ${decided ? 'opacity-70' : ''}`}>
-      <div className="flex flex-col gap-2 mb-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs text-slate-500 mb-0.5">Related components</p>
-            <p className="break-words font-medium text-sm text-slate-800">
-              {group.components.map((c) => c.name).join(', ')}
-            </p>
-          </div>
-          <SimilarityScore score={group.topScore} className="w-full sm:w-44 shrink-0" />
-        </div>
-        {group.primarySignals.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-slate-500">Matched on:</span>
-            {group.primarySignals.map((s) => (
-              <SignalBadge key={s} signal={s} />
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="grid gap-2">
-        {group.pairs.map((pair) => {
-          const decision = decisions.find((d) => d.pairId === pair.id);
-          return (
-            <RowButton
-              key={pair.id}
-              variant="subtle"
-              className="min-w-0 flex-wrap sm:flex-nowrap"
-              onClick={() => onSelectPair(group, pair)}
-            >
-              <div className="w-full min-w-0 sm:w-auto sm:flex-1">
-                <div className="text-sm font-medium text-slate-800 truncate">
-                  {pair.componentA.name} ↔ {pair.componentB.name}
-                </div>
-                <div className="text-xs text-slate-400 mt-0.5 truncate">{pair.summary}</div>
-              </div>
-              <SimilarityScore score={pair.totalScore} compact className="w-28 shrink-0" />
-              {decision ? (
-                <DecisionTypeBadge type={decision.type} />
-              ) : (
-                <Badge color="blue">Review</Badge>
-              )}
-            </RowButton>
-          );
-        })}
-      </div>
+    <Card className="queue-card min-w-0">
+      <button type="button" className="queue-row" onClick={() => onSelectGroup(group)}>
+        <span className="queue-row-copy">
+          <span className="queue-row-title">
+            <ComponentTagList names={group.components.map((component) => component.name)} />
+            {decision && (
+              <DecisionTypeBadge
+                outcome={decisionOutcome(decision)}
+                className="ml-2 align-middle"
+              />
+            )}
+          </span>
+          <span className="queue-row-meta">
+            {group.components.length} components
+            {decision ? ` · ${decisionSummary(decision, group.components)}` : ''}
+          </span>
+          {highlights.length > 0 && (
+            <span className="queue-row-evidence">{highlights.join(' · ')}</span>
+          )}
+        </span>
+        <GroupSimilaritySummary
+          score={group.score}
+          confidence={group.confidence}
+          className="w-36 shrink-0 sm:w-44"
+        />
+        <span className="queue-review-action">
+          {decision ? 'View group' : 'Review group'} <span aria-hidden="true">→</span>
+        </span>
+      </button>
     </Card>
   );
 }

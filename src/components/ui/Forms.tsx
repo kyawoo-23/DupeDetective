@@ -19,7 +19,7 @@ export function Input({ label, error, className = '', id, ...rest }: InputProps)
       )}
       <input
         id={inputId}
-        className={`min-h-11 min-w-0 w-full border rounded-md px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+        className={`min-h-11 min-w-0 w-full border rounded-md px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
           error ? 'border-red-400' : 'border-slate-300'
         } ${className}`}
         {...rest}
@@ -48,7 +48,7 @@ export function TextArea({ label, error, className = '', id, ...rest }: TextArea
       )}
       <textarea
         id={areaId}
-        className={`min-w-0 w-full border rounded-md px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y ${
+        className={`min-w-0 w-full border rounded-md px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-y ${
           error ? 'border-red-400' : 'border-slate-300'
         } ${className}`}
         {...rest}
@@ -77,7 +77,7 @@ export function Select({ label, options, className = '', id, ...rest }: SelectPr
       )}
       <select
         id={selectId}
-        className={`min-h-11 min-w-0 w-full border border-slate-300 rounded-md px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${className}`}
+        className={`min-h-11 min-w-0 w-full border border-slate-300 rounded-md px-3 py-2 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white ${className}`}
         {...rest}
       >
         {options.map((o) => (

@@ -104,7 +104,7 @@ export default function ContactForm() {
           title="Form with validation"
           desc="Native constraint API, :user-invalid, aria-invalid sync, and accessible error messages."
         />
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-8 text-center">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-8 text-center">
           <p className="text-emerald-700 font-semibold text-lg">✓ Submission received — thank you!</p>
           <button
             type="button"
@@ -128,7 +128,7 @@ export default function ContactForm() {
       <form
         onSubmit={handleSubmit}
         noValidate
-        className="bg-white rounded-xl border border-slate-200 p-6 space-y-5"
+        className="bg-white rounded-lg border border-slate-200 p-6 space-y-5"
       >
         {/* Name + Email row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

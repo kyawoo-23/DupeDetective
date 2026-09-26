@@ -48,7 +48,7 @@ export function ScanForm() {
     setLoading(true);
     try {
       const scan = await runGitHubScan(query.url, query.ref || undefined, setProgress);
-      addScan(scan);
+      await addScan(scan);
       setActiveScan(scan.id);
       navigate(`/scan/${scan.id}`);
     } catch (e) {
@@ -68,7 +68,7 @@ export function ScanForm() {
     setLoading(true);
     try {
       const scan = await runZipScan(zipFile, setProgress);
-      addScan(scan);
+      await addScan(scan);
       setActiveScan(scan.id);
       navigate(`/scan/${scan.id}`);
     } catch (e) {
@@ -191,10 +191,10 @@ export function ScanForm() {
               }}
               role="button"
               tabIndex={0}
-              className={`border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+              className={`border-2 border-dashed rounded-lg p-6 sm:p-8 text-center cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
                 isDragOver
-                  ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-200/80 scale-[1.01]'
-                  : 'border-slate-200 hover:border-blue-400 hover:bg-blue-50/30'
+                  ? 'border-primary-500 bg-primary-50 shadow-md ring-2 ring-primary-200/80 scale-[1.01]'
+                  : 'border-slate-200 hover:border-primary-400 hover:bg-primary-50/30'
               }`}
             >
               {zipFile ? (
@@ -291,7 +291,7 @@ function ErrorBox({ message }: { message: string }) {
 
 function ProgressMsg({ message }: { message: string }) {
   return (
-    <div role="status" className="flex items-center gap-2 text-sm text-blue-600">
+    <div role="status" className="flex items-center gap-2 text-sm text-primary-700">
       <svg
         className="animate-spin h-4 w-4"
         viewBox="0 0 24 24"

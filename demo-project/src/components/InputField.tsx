@@ -39,7 +39,7 @@ export function InputField({
         <input
           id={id}
           {...rest}
-          className={`w-full rounded-lg border ${icon ? "pl-8" : ""} ${pad} outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
+          className={`w-full rounded-lg border bg-white text-slate-900 placeholder:text-slate-400 ${icon ? "pl-8" : ""} ${pad} outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${
             errorMsg ? "border-red-400 bg-red-50" : "border-slate-300"
           } ${className}`}
         />

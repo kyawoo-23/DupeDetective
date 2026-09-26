@@ -96,7 +96,7 @@ export default function DataTable() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter by name or owner…"
-            className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
         </div>
         {filter && (
@@ -112,12 +112,12 @@ export default function DataTable() {
 
       {/* Table */}
       <div
-        className="rounded-xl border border-slate-200 overflow-hidden"
+        className="rounded-lg border border-slate-200 overflow-x-auto bg-white"
         role="region"
         aria-labelledby="table-heading"
         tabIndex={0}
       >
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[680px] text-sm">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr>
               {(

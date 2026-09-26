@@ -15,7 +15,7 @@ export function ScanInputPage() {
           <Link
             to="/"
             aria-label="DupeDetective home"
-            className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
           >
             <DetectiveIcon />
           </Link>
@@ -26,9 +26,9 @@ export function ScanInputPage() {
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 sm:px-6 sm:py-12 lg:py-16">
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 pt-8 pb-16 sm:px-6 sm:pt-12 sm:pb-20 lg:pt-16">
         <div className="flex flex-col items-center gap-12 lg:gap-16">
-          <section className="w-full max-w-3xl min-w-0 py-6 sm:py-10" aria-label="Start a scan">
+          <section className="w-full max-w-3xl min-w-0 pb-6 sm:pb-10" aria-label="Start a scan">
             <div className="mb-4 flex items-baseline justify-between gap-3">
               <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
                 Start a scan

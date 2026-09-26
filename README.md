@@ -4,7 +4,7 @@ Find and review similar React components in a codebase.
 
 ## What it does
 
-DupeDetective scans a public GitHub repository or a ZIP archive for similar React components. It uses deterministic, AST-based analysis — no AI — to group candidates and explain the evidence. A reviewer inspects the code, tries best-effort component previews, records a decision, and generates a merge backlog and component guidelines.
+DupeDetective scans a public GitHub repository or a ZIP archive for similar React components. It uses deterministic, AST-based analysis — no AI — to group candidates and explain the evidence. A reviewer inspects the code, tries best-effort component previews, records a decision, and generates a merge backlog and agent instructions.
 
 ## Quick start
 
@@ -33,25 +33,24 @@ Components are analyzed with five deterministic signals, each weighted independe
 | Shared class names | 10 |
 | Component name similarity | 5 |
 
-Candidate pairs need specific evidence (shared props, related names, or strongly overlapping element types) as well as a score ≥ 30 to enter review. Groups are formed by union-finding connected pairs. All scores are review-ordering hints, not probability or duplicate verdicts.
+Exported components are scored in pairs. A token that appears in many components counts for less than a rare one. Components join a group while the average score between clusters stays at 28 or above. A group's score is the average of every pair inside it, including weaker links. 40 or higher is Strong; below that, a group is Possible. Scores are review-ordering hints, not probability or duplicate verdicts.
 
-The review queue initially shows pairs scoring 50 or higher. Use the Minimum score filter to include lower-scoring candidates down to 30; the selected cutoff stays in the scan URL while reviewing pairs.
+The review queue starts at 28, which lists every group. Raise the minimum to 40 or 50 to hide lower-scoring groups. The filter never changes a group's membership or the scope of its decision.
 
 ## Review decisions
 
-| Decision | Requires a note | Creates backlog item | Guideline entry |
-|---|---|---|---|
-| Merge | Yes, plus the component to keep | Yes | After marked Complete |
-| Keep separate | No | No | Only when the note is filled in |
+| Decision | Requires a note | Creates backlog item |
+|---|---|---|
+| Merge (all or some members) | Yes, plus the component to keep | Yes |
+| Keep separate | No | No |
 
-Decisions are scoped to the current scan. A new scan starts with no prior decisions.
+Each candidate group gets one decision. Choose the component to keep, which of the others merge into it, and which stay separate. Pair comparisons are evidence only. Decisions are scoped to the current scan; a new scan starts with no prior decisions.
 
 ## Generated outputs
 
 All outputs are generated within the website for the current scan:
 
-- **Backlog** — Markdown listing merges with status and next steps. Downloadable as `backlog.md`.
-- **Component guidelines** — `component-guidelines.md` with finished merges and keep-separate notes. A blank keep-separate decision is omitted.
+- **Backlog** — Markdown listing merges with status and next steps (copy from the UI).
 - **Agent instructions** — Copyable repair instructions for each merge, individually or combined.
 
 ## Component preview
@@ -69,7 +68,7 @@ src/
     scorer.ts     — Deterministic similarity scoring and candidate grouping
     fs.ts         — ZIP extraction and GitHub archive fetching
     mockProps.ts  — Mock prop generation from prop types
-    outputs.ts    — Markdown backlog, guidelines, agent instruction generators
+    outputs.ts    — Markdown backlog and agent instruction generators
     scan.ts       — Scan orchestration (ZIP and GitHub)
   store/
     index.ts      — Zustand store (scans, decisions, per-scan state)
@@ -79,9 +78,10 @@ src/
     ScanInputPage.tsx      — GitHub URL / ZIP upload form
     ScanWorkspacePage.tsx  — Review queue, components list, outputs
   components/
-    review/ReviewPanel.tsx        — Side-by-side comparison + decision form
+    review/ReviewPanel.tsx        — Pair evidence and component comparison
+    review/GroupReviewPanel.tsx   — Group navigation + decision sheet
     preview/ComponentPreview.tsx  — Sandboxed iframe preview + mock prop controls
-    outputs/OutputsPanel.tsx      — Backlog, guidelines, agent instructions
+    outputs/OutputsPanel.tsx      — Backlog and agent instructions
     ui/index.tsx                  — Shared UI primitives
 ```
 
@@ -89,12 +89,11 @@ src/
 
 1. Open the app and enter a public React repository URL (e.g. `https://github.com/shadcn-ui/ui`).
 2. Wait for the scan to complete. Inspect candidate groups and match evidence.
-3. Open a pair, adjust mock props, view previews and source side-by-side.
-4. Record a **Merge** decision, choose the component to keep, save.
+3. Open a group, compare pairs, adjust mock props, and view previews and source side-by-side.
+4. Record one **Merge** decision for the group, choose the component to keep, add a note, and save.
 5. Go to **Outputs → Agent Instructions**, copy the instruction.
-6. In the Backlog tab, advance the item from Planned → In Progress → Complete.
-7. View the updated **Component Guidelines** — the kept component appears there only after completion.
-8. Click **New Scan** — verify the new scan starts with no prior decisions.
+6. In the Backlog tab, mark the merge **Complete** with an optional note.
+7. Click **New Scan** — verify the new scan starts with no prior decisions.
 
 ## Security
 

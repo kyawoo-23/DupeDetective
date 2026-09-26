@@ -19,7 +19,7 @@ export function Card({ children, className = '', onClick }: CardProps) {
             tabIndex: 0,
           }
         : {})}
-      className={`bg-white border border-slate-200 rounded-xl ${interactive ? 'cursor-pointer hover:border-blue-400 hover:shadow-sm transition-all' : ''} ${className}`}
+      className={`bg-white border border-slate-200 rounded-xl ${interactive ? 'cursor-pointer hover:border-primary-400 hover:shadow-sm transition-all' : ''} ${className}`}
     >
       {children}
     </div>

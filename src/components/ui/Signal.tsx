@@ -4,28 +4,25 @@ import { Badge } from './Badge';
 import type { BadgeColor } from './shared';
 
 const signalColors: Record<SimilaritySignal, BadgeColor> = {
-  'jsx-structure': 'blue',
-  'prop-overlap': 'purple',
-  'event-handlers': 'teal',
-  'class-names': 'amber',
-  'component-name': 'slate',
-  'nesting-depth': 'green',
+  markup: 'blue',
+  styling: 'amber',
+  props: 'purple',
+  name: 'slate',
+  behavior: 'teal',
 };
 const signalLabels: Record<SimilaritySignal, string> = {
-  'jsx-structure': 'Markup',
-  'prop-overlap': 'Shared props',
-  'event-handlers': 'Events',
-  'class-names': 'CSS classes',
-  'component-name': 'Names',
-  'nesting-depth': 'Nesting',
+  markup: 'Markup',
+  styling: 'Classes',
+  props: 'Props',
+  name: 'Names',
+  behavior: 'Behavior',
 };
 const signalDescriptions: Record<SimilaritySignal, string> = {
-  'jsx-structure': 'Uses similar HTML/JSX elements (div, button, etc.)',
-  'prop-overlap': 'Declares overlapping prop names',
-  'event-handlers': 'Uses similar event handler props (onClick, onChange, …)',
-  'class-names': 'Shares Tailwind or CSS class strings',
-  'component-name': 'Component names look related',
-  'nesting-depth': 'JSX is nested to a similar depth',
+  markup: 'Shared root element, tags, and ARIA roles, weighted by how rare they are in this scan',
+  styling: 'Shared class tokens, weighted by how rare they are in this scan',
+  props: 'Shared prop roles, such as title/heading or size/scale',
+  name: 'Names end with the same word or a known synonym',
+  behavior: 'Shared event attributes and callback props',
 };
 
 export function signalMaxScore(signal: SimilaritySignal): number {

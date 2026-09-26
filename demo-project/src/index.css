@@ -1,30 +1,42 @@
-/* ── Google Fonts import — must precede all other rules ──────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@600;700&display=swap");
+/* ── Type — must precede other rules ──────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700&display=swap");
 
 @import "tailwindcss";
 
-/* ── Custom design tokens ─────────────────────────────────────────────── */
+/* ── Catalog tokens ───────────────────────────────────────────────────── */
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Syne", var(--font-sans);
+  --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sans);
 
-  --color-indigo-50:  #eef2ff;
-  --color-indigo-100: #e0e7ff;
-  --color-indigo-200: #c7d2fe;
-  --color-indigo-500: #6366f1;
-  --color-indigo-600: #4f46e5;
-  --color-indigo-700: #4338ca;
+  /* Cobalt, exposed on the existing indigo scale so shared class names hold. */
+  --color-indigo-50:  #eef3fc;
+  --color-indigo-100: #d9e4f8;
+  --color-indigo-200: #b7cbf0;
+  --color-indigo-300: #8aabe4;
+  --color-indigo-500: #3d6fd4;
+  --color-indigo-600: #2457c5;
+  --color-indigo-700: #1c459e;
+  --color-indigo-800: #16367c;
 
-  --color-slate-50:  #f8fafc;
-  --color-slate-100: #f1f5f9;
-  --color-slate-200: #e2e8f0;
-  --color-slate-300: #cbd5e1;
-  --color-slate-400: #94a3b8;
-  --color-slate-500: #64748b;
-  --color-slate-600: #475569;
-  --color-slate-700: #334155;
-  --color-slate-800: #1e293b;
-  --color-slate-900: #0f172a;
+  /* Ink, mist, and line on the slate scale. */
+  --color-slate-50:  #f4f6f8;
+  --color-slate-100: #eef1f4;
+  --color-slate-200: #d5dce3;
+  --color-slate-300: #c3cdd6;
+  --color-slate-400: #8b97a6;
+  --color-slate-500: #5c6b7a;
+  --color-slate-600: #3e4c5e;
+  --color-slate-700: #2a3848;
+  --color-slate-800: #1e2a3a;
+  --color-slate-900: #172033;
+
+  /* Tide for positive status. */
+  --color-emerald-50:  #e7f4f3;
+  --color-emerald-100: #cde8e6;
+  --color-emerald-200: #a3d4d1;
+  --color-emerald-600: #0f6e6b;
+  --color-emerald-700: #0c5856;
+  --color-emerald-800: #0a4846;
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────── */
@@ -32,20 +44,63 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: var(--color-slate-50);
+  background-color: var(--color-slate-100);
   color: var(--color-slate-800);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Dialog / modal backdrop ──────────────────────────────────────────── */
+/* ── Dialog enter / exit ──────────────────────────────────────────────── */
+dialog {
+  opacity: 0;
+  transform: translateY(8px);
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 180ms;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+
+dialog[open] {
+  opacity: 1;
+  transform: translateY(0);
+
+  @starting-style {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
 dialog::backdrop {
-  background: rgb(15 23 42 / 0.55);
-  backdrop-filter: blur(2px);
+  background-color: rgb(23 32 51 / 0);
+  transition:
+    display 180ms allow-discrete,
+    overlay 180ms allow-discrete,
+    background-color 180ms ease-out;
+}
+
+dialog[open]::backdrop {
+  background-color: rgb(23 32 51 / 0.48);
+
+  @starting-style {
+    background-color: rgb(23 32 51 / 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog {
+    transform: none;
+    transition-duration: 80ms;
+  }
+
+  @starting-style {
+    dialog[open] {
+      transform: none;
+    }
+  }
 }
 
 /* ── Active nav indicator ─────────────────────────────────────────────── */
 .nav-link-active {
-  color: var(--color-indigo-600);
+  color: var(--color-indigo-700);
   font-weight: 600;
 }
 .nav-link-active::after {
@@ -55,7 +110,7 @@ dialog::backdrop {
   left: 0;
   right: 0;
   height: 2px;
-  background: var(--color-indigo-500);
+  background: var(--color-indigo-600);
   border-radius: 9999px;
 }
 
@@ -64,17 +119,8 @@ dialog::backdrop {
   background-color: var(--color-indigo-50);
 }
 
-/* ── Smooth dialog open/close ─────────────────────────────────────────── */
-dialog[open] {
-  animation: dialog-in 180ms ease;
-}
-@keyframes dialog-in {
-  from { opacity: 0; transform: translateY(6px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-
 /* ── Focus-visible ring ───────────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--color-indigo-500);
+  outline: 2px solid var(--color-indigo-600);
   outline-offset: 2px;
 }

@@ -2,24 +2,23 @@
 
 DupeDetective is a web app for finding and reviewing similar React components in a public GitHub repository or uploaded ZIP.
 
-Use the relevant guide before changing that area:
+Read the guide for the area you are changing:
 
-- [Scan sources](docs/agents/scan-sources.md): GitHub revisions, ZIP validation, file selection, and source identity.
-- [Component analysis](docs/agents/component-analysis.md): React discovery, deterministic similarity, and match evidence.
-- [Preview](docs/agents/preview.md): isolated rendering, mock props, and source fallback.
-- [Review and outputs](docs/agents/review-and-outputs.md): decisions, scan isolation, backlog, guidelines, and coding-agent instructions.
+- [Scan sources](docs/agents/scan-sources.md): GitHub revisions, ZIP validation, file selection, source identity, and the dev-server archive proxy.
+- [Component analysis](docs/agents/component-analysis.md): React discovery, deterministic similarity, grouping, and match evidence.
+- [Preview](docs/agents/preview.md): isolated rendering, mock props, source fallback, and the bundled demo project.
+- [Review and outputs](docs/agents/review-and-outputs.md): group decisions, scan isolation, verdict drafts, the member roster, backlog, and coding-agent instructions.
+- [Interface](docs/agents/ui.md): URL query state and component path chips.
+- [Tooling](docs/agents/tooling.md): Vite config, the scan bundle, and the browser TypeScript project.
 
-The [PRD](docs/PRD.md) defines product scope. Keep each scan's records separate and leave scanned repositories unchanged.
-
-Run `npm run typecheck` for TypeScript validation; `npm run build` also runs `tsc` before Vite.
+When a change may fall outside product scope, read the [PRD](docs/PRD.md).
 
 ## Learned User Preferences
 
-- Use **nuqs** (`NuqsAdapter` from `nuqs/adapters/react-router/v6`, `useQueryStates`) for URL query string state in the app, not manual `useSearchParams`.
+- Show React component names in JSX form (e.g. `<FormField />`) in review and queue UI, not bare identifiers.
+- Fix existing popover and sheet overlays in place; do not replace them with a different overlay primitive.
+- Use `react-hot-toast` for success/error toasts, styled to match the app.
 
 ## Learned Workspace Facts
 
-- `graphify-out/` is gitignored (generated graphify output).
-- GitHub archive fetch in the client uses same-origin Vite proxies (`/__github_api`, `/__github_codeload` in `vite.config.ts`); browser calls to zipball/codeload URLs fail CORS without them. Static hosting without those proxies cannot run GitHub scans from the browser.
-- Scanning pulls `@babel/parser` / `@babel/types` into the browser bundle; `vite.config.ts` `define` replaces `process.env` reads those packages need at init.
-- Root `tsconfig.json` is browser-scoped for `src/`; in `vite.config.ts` prefer Vite’s `mode` over Node `process.env` so typecheck stays clean without `@types/node`.
+- DupeDetective is built for the IBM Bob 2.0 Hackathon; the site footer carries that context and the GitHub repo link.

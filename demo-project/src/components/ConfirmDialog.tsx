@@ -24,7 +24,7 @@ export const ConfirmDialog = forwardRef<HTMLDialogElement, ConfirmDialogProps>(
       <dialog
         ref={ref}
         aria-labelledby="cd-title"
-        className="m-auto w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-xl backdrop:bg-slate-900/50"
+        className="m-auto w-full max-w-sm rounded-lg border border-slate-200 bg-white p-6 shadow-lg backdrop:bg-slate-900/50"
       >
         <h2 id="cd-title" className="font-semibold text-slate-900 mb-2">{title}</h2>
         <p className="text-sm text-slate-600 mb-6">{message}</p>

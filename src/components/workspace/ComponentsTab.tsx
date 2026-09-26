@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Scan } from '../../types';
-import { Badge, Card, Empty, Input } from '../ui';
+import { Badge, Card, ComponentTag, Empty, FileLocation, Input } from '../ui';
 
 export function ComponentsTab({ scan }: { scan: Scan }) {
   const [search, setSearch] = useState('');
@@ -31,12 +31,15 @@ export function ComponentsTab({ scan }: { scan: Scan }) {
         {filtered.map((c) => (
           <Card key={c.id} className="min-w-0 p-4">
             <div className="flex min-w-0 flex-wrap items-center gap-2 mb-1">
-              <span className="min-w-0 break-all font-medium text-sm text-slate-900">{c.name}</span>
+              <ComponentTag
+                name={c.name}
+                className="min-w-0 break-all font-medium text-sm text-slate-900"
+              />
               <Badge color="slate">{c.kind}</Badge>
               {c.exportType !== 'none' && <Badge color="blue">{c.exportType}</Badge>}
             </div>
-            <p className="text-xs text-slate-500 break-all mb-2">
-              {c.file}:{c.line}
+            <p className="mb-2">
+              <FileLocation file={c.file} line={c.line} />
             </p>
             <div className="flex flex-wrap gap-1">
               {c.propNames.slice(0, 5).map((p) => (

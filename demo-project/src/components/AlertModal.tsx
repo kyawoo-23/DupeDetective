@@ -29,7 +29,7 @@ export const AlertModal = forwardRef<HTMLDialogElement, AlertModalProps>(
       <dialog
         ref={ref}
         aria-labelledby="am-heading"
-        className="m-auto w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-xl backdrop:bg-slate-900/50"
+        className="m-auto w-full max-w-sm rounded-lg border border-slate-200 bg-white shadow-lg backdrop:bg-slate-900/50"
       >
         <div className="p-6">
           <div className={`inline-flex items-center justify-center w-10 h-10 rounded-full ${cfg.bg} ${cfg.text} text-lg mb-4`}>

@@ -1,332 +1,412 @@
-// Deterministic similarity scoring for React components
-// Fixed weights, no AI.
+// Deterministic similarity scoring for React components.
+// Fixed weights, no AI. Tuned so demo-project's six duplicate families group apart from unrelated components.
 
 import type {
   CandidateGroup,
   CandidatePair,
+  GroupConfidence,
   ReactComponent,
   SignalDetail,
   SimilaritySignal,
 } from '../types';
 
-// ──────────────────────────────────────────
-// Signal weights (tunable for demo repo)
-// ──────────────────────────────────────────
 const WEIGHTS: Record<SimilaritySignal, number> = {
-  'jsx-structure': 35,
-  'prop-overlap': 25,
-  'event-handlers': 15,
-  'class-names': 10,
-  'component-name': 5,
-  'nesting-depth': 10,
+  markup: 30,
+  styling: 25,
+  props: 20,
+  name: 15,
+  behavior: 10,
 };
 
-const PAIR_THRESHOLD = 30; // minimum score to include a pair inside a group
-const CLUSTER_THRESHOLD = 55; // minimum score to drive union-find clustering
+/** Mean pair score required to join two clusters. */
+const GROUP_THRESHOLD = 28;
+/** Group score at or above this is labeled Strong. */
+const STRONG_GROUP_SCORE = 40;
 
-// Common layout and icon tags appear in unrelated components. A pair needs
-// evidence beyond those tags, event names, and similar nesting to enter review.
-const GENERIC_TAGS = new Set([
-  'div', 'span', 'p', 'section', 'main', 'article', 'header', 'footer', 'aside',
-  'svg', 'path', 'circle', 'line', 'polyline', 'g',
-  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-]);
+const NAME_FAMILIES: readonly (readonly string[])[] = [
+  ['button', 'btn'],
+  ['card', 'tile'],
+  ['badge', 'pill', 'tag', 'chip'],
+  ['spinner', 'loader', 'loading', 'indicator'],
+  ['input', 'field', 'textinput', 'textfield'],
+  ['modal', 'dialog'],
+  ['table', 'grid'],
+  ['form'],
+];
 
-function hasSpecificEvidence(a: ReactComponent, b: ReactComponent): boolean {
-  const sharedProps = a.propNames.filter((prop) => b.propNames.includes(prop));
-  if (sharedProps.length >= 2 || nameSimilarity(a.name, b.name) >= 0.6) return true;
+/** Prop names that mean the same thing across near-duplicates. */
+const PROP_ROLES: Record<string, string> = {
+  heading: 'title',
+  title: 'title',
+  description: 'body',
+  body: 'body',
+  message: 'body',
+  detail: 'body',
+  desc: 'body',
+  onclose: 'dismiss',
+  ondismiss: 'dismiss',
+  oncancel: 'dismiss',
+  variant: 'tone',
+  color: 'tone',
+  status: 'tone',
+  accent: 'tone',
+  type_: 'tone',
+  size: 'size',
+  scale: 'size',
+  loading: 'busy',
+  pending: 'busy',
+  error: 'error',
+  errormessage: 'error',
+  errormsg: 'error',
+  label: 'text',
+  children: 'text',
+};
 
-  const specificTags = (component: ReactComponent) =>
-    component.jsxTags.filter((tag) => tag === tag.toLowerCase() && !GENERIC_TAGS.has(tag));
-  const aTags = specificTags(a);
-  const bTags = specificTags(b);
-  if (aTags.length && bTags.length && jaccard(aTags, bTags) >= 0.6) return true;
-
-  // Tiny leaf components can be genuine variants even when their only tag is
-  // normally generic (for example, two status pills made from a single span).
-  return a.jsxTags.length === 1 && b.jsxTags.length === 1 &&
-    a.jsxTags[0] === b.jsxTags[0] && ['span', 'button', 'input', 'label'].includes(a.jsxTags[0]);
+function canonicalProp(name: string): string {
+  return PROP_ROLES[name.toLowerCase()] ?? name.toLowerCase();
 }
 
-// ──────────────────────────────────────────
-// Jaccard similarity helper
-// ──────────────────────────────────────────
-function jaccard(a: string[], b: string[]): number {
-  if (a.length === 0 && b.length === 0) return 0;
-  const setA = new Set(a);
-  const setB = new Set(b);
-  let intersection = 0;
-  for (const v of setA) if (setB.has(v)) intersection++;
-  const union = setA.size + setB.size - intersection;
-  return union === 0 ? 0 : intersection / union;
+function nameWords(name: string): string[] {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean);
 }
 
-// ──────────────────────────────────────────
-// Name similarity: normalized Levenshtein ratio
-// ──────────────────────────────────────────
-function nameSimilarity(a: string, b: string): number {
-  const la = a.toLowerCase();
-  const lb = b.toLowerCase();
-  if (la === lb) return 1;
-  // Strip common prefixes/suffixes like Base, New, V2, Legacy
-  const strip = (s: string) =>
-    s
-      .replace(/^(base|new|old|v\d+|legacy|common|shared)/i, '')
-      .replace(
-        /(button|card|modal|form|input|list|item|badge|chip|tag|icon|label|text|heading|title|header|footer|nav|menu|item|row|cell|column|panel|section|container|wrapper|box|layout)$/i,
-        '_$1'
-      );
-  if (strip(la) === strip(lb)) return 0.85;
-  // Common substrings
-  const shorter = la.length < lb.length ? la : lb;
-  const longer = la.length >= lb.length ? la : lb;
-  if (longer.includes(shorter) && shorter.length > 3) return 0.7;
-  return 0;
+function lastWord(name: string): string {
+  const words = nameWords(name);
+  return words[words.length - 1] ?? '';
 }
 
-// ──────────────────────────────────────────
-// JSX tag tree similarity
-// ──────────────────────────────────────────
-function jsxStructureScore(a: ReactComponent, b: ReactComponent): { score: number; label: string } {
-  const tagJaccard = jaccard(a.jsxTags, b.jsxTags);
-
-  // Normalize tag counts (penalize if they're very different in size)
-  const countRatio =
-    Math.min(a.jsxNodeCount, b.jsxNodeCount) / (Math.max(a.jsxNodeCount, b.jsxNodeCount) || 1);
-
-  const raw = tagJaccard * 0.7 + countRatio * 0.3;
-  const score = Math.round(raw * WEIGHTS['jsx-structure']);
-
-  const commonTags = a.jsxTags.filter((t) => b.jsxTags.includes(t));
-  const label =
-    commonTags.length > 0
-      ? `Same JSX elements: ${commonTags.slice(0, 5).join(', ')}${commonTags.length > 5 ? ` +${commonTags.length - 5} more` : ''}`
-      : 'Similar JSX structure';
-
-  return { score, label };
+function nameFamily(name: string): number {
+  return NAME_FAMILIES.findIndex((family) => family.includes(lastWord(name)));
 }
 
-// ──────────────────────────────────────────
-// Prop overlap
-// ──────────────────────────────────────────
-function propOverlapScore(a: ReactComponent, b: ReactComponent): { score: number; label: string } {
-  const j = jaccard(a.propNames, b.propNames);
-  const score = Math.round(j * WEIGHTS['prop-overlap']);
-
-  const shared = a.propNames.filter((p) => b.propNames.includes(p));
-  const total = new Set([...a.propNames, ...b.propNames]).size;
-  const label =
-    shared.length > 0
-      ? `${shared.length} of ${total} prop names overlap: ${shared.slice(0, 4).join(', ')}${shared.length > 4 ? '…' : ''}`
-      : 'No prop overlap';
-
-  return { score, label };
+function markupTokens(component: ReactComponent): string[] {
+  return [
+    ...component.jsxTags.filter((tag) => tag === tag.toLowerCase()),
+    ...component.ariaRoles.map((role) => `role:${role}`),
+  ];
 }
 
-// ──────────────────────────────────────────
-// Event handler overlap
-// ──────────────────────────────────────────
-function eventHandlerScore(a: ReactComponent, b: ReactComponent): { score: number; label: string } {
-  const j = jaccard(a.eventHandlers, b.eventHandlers);
-  const score = Math.round(j * WEIGHTS['event-handlers']);
-
-  const shared = a.eventHandlers.filter((e) => b.eventHandlers.includes(e));
-  const label =
-    shared.length > 0 ? `Shared event handlers: ${shared.join(', ')}` : 'No shared event handlers';
-
-  return { score, label };
+function propTokens(component: ReactComponent): string[] {
+  return [...new Set(component.propNames.map(canonicalProp))];
 }
 
-// ──────────────────────────────────────────
-// Class names
-// ──────────────────────────────────────────
-function classNameScore(a: ReactComponent, b: ReactComponent): { score: number; label: string } {
-  const j = jaccard(a.classNames, b.classNames);
-  const score = Math.round(j * WEIGHTS['class-names']);
-
-  const shared = a.classNames.filter((c) => b.classNames.includes(c));
-  const label =
-    shared.length > 0
-      ? `Shared class names: ${shared.slice(0, 4).join(', ')}${shared.length > 4 ? '…' : ''}`
-      : 'No shared class names';
-
-  return { score, label };
+function behaviorTokens(component: ReactComponent): string[] {
+  const callbacks = component.propNames
+    .filter((prop) => /^on[A-Z]/.test(prop))
+    .map((prop) => `cb:${PROP_ROLES[prop.toLowerCase()] ?? prop}`);
+  return [...new Set([...component.eventHandlers, ...callbacks])];
 }
 
-// ──────────────────────────────────────────
-// Component name
-// ──────────────────────────────────────────
-function componentNameScore(
+function weightedOverlap(
+  left: string[],
+  right: string[],
+  weight: (token: string) => number
+): number {
+  const a = new Set(left);
+  const b = new Set(right);
+  let shared = 0;
+  let union = 0;
+  for (const token of new Set([...a, ...b])) {
+    const tokenWeight = weight(token);
+    union += tokenWeight;
+    if (a.has(token) && b.has(token)) shared += tokenWeight;
+  }
+  return union === 0 ? 0 : shared / union;
+}
+
+function sharedTokens(
+  left: string[],
+  right: string[],
+  weight: (token: string) => number,
+  limit = 4
+): string[] {
+  const other = new Set(right);
+  return [...new Set(left.filter((token) => other.has(token)))]
+    .sort((a, b) => weight(b) - weight(a) || a.localeCompare(b))
+    .slice(0, limit);
+}
+
+function capitalize(word: string): string {
+  return word ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+}
+
+interface ScoredSignals {
+  total: number;
+  signals: SignalDetail[];
+}
+
+function scoreComponents(
   a: ReactComponent,
-  b: ReactComponent
-): { score: number; label: string } {
-  const sim = nameSimilarity(a.name, b.name);
-  const score = Math.round(sim * WEIGHTS['component-name']);
-  const label =
-    sim > 0.8
-      ? `Very similar names: "${a.name}" and "${b.name}"`
-      : sim > 0.5
-        ? `Related names: "${a.name}" and "${b.name}"`
-        : `Different names: "${a.name}" and "${b.name}"`;
-  return { score, label };
-}
+  b: ReactComponent,
+  weight: (token: string) => number,
+  componentCount: number
+): ScoredSignals {
+  const sameRoot = a.rootTag !== '' && a.rootTag === b.rootTag;
+  const rootWeight = sameRoot ? weight(`root:${a.rootTag}`) / Math.log(1 + componentCount) : 0;
+  const markup =
+    WEIGHTS.markup *
+    (0.4 * rootWeight + 0.6 * weightedOverlap(markupTokens(a), markupTokens(b), weight));
+  const styling = WEIGHTS.styling * weightedOverlap(a.classNames, b.classNames, weight);
+  const props = WEIGHTS.props * weightedOverlap(propTokens(a), propTokens(b), weight);
+  const familyA = nameFamily(a.name);
+  const familyB = nameFamily(b.name);
+  const name = WEIGHTS.name * (familyA >= 0 && familyA === familyB ? 1 : 0);
+  const behavior = WEIGHTS.behavior * weightedOverlap(behaviorTokens(a), behaviorTokens(b), weight);
 
-// ──────────────────────────────────────────
-// Nesting depth
-// ──────────────────────────────────────────
-function nestingDepthScore(a: ReactComponent, b: ReactComponent): { score: number; label: string } {
-  const maxDepth = Math.max(a.jsxDepth, b.jsxDepth);
-  if (maxDepth === 0) return { score: 0, label: 'No JSX nesting' };
-  const diff = Math.abs(a.jsxDepth - b.jsxDepth);
-  const sim = 1 - diff / maxDepth;
-  const score = Math.round(sim * WEIGHTS['nesting-depth']);
-  const label =
-    diff === 0
-      ? `Same JSX nesting depth (${a.jsxDepth})`
-      : `Similar nesting depth: ${a.jsxDepth} vs ${b.jsxDepth}`;
-  return { score, label };
-}
+  const raw: { signal: SimilaritySignal; score: number; label: string }[] = [
+    { signal: 'markup', score: markup, label: markupLabel(a, b, weight) },
+    { signal: 'styling', score: styling, label: stylingLabel(a, b, weight) },
+    { signal: 'props', score: props, label: propsLabel(a, b, weight) },
+    { signal: 'name', score: name, label: nameLabel(a, b) },
+    { signal: 'behavior', score: behavior, label: behaviorLabel(a, b, weight) },
+  ];
 
-// ──────────────────────────────────────────
-// Score a pair
-// ──────────────────────────────────────────
-let pairIdCounter = 0;
-function makePairId() {
-  return `pair_${++pairIdCounter}`;
-}
-
-function scorePair(a: ReactComponent, b: ReactComponent): CandidatePair {
-  const signals: SignalDetail[] = [];
-
-  const jsx = jsxStructureScore(a, b);
-  const props = propOverlapScore(a, b);
-  const events = eventHandlerScore(a, b);
-  const classes = classNameScore(a, b);
-  const name = componentNameScore(a, b);
-  const depth = nestingDepthScore(a, b);
-
-  if (jsx.score > 0) signals.push({ signal: 'jsx-structure', label: jsx.label, score: jsx.score });
-  if (props.score > 0)
-    signals.push({ signal: 'prop-overlap', label: props.label, score: props.score });
-  if (events.score > 0)
-    signals.push({ signal: 'event-handlers', label: events.label, score: events.score });
-  if (classes.score > 0)
-    signals.push({ signal: 'class-names', label: classes.label, score: classes.score });
-  if (name.score > 0)
-    signals.push({ signal: 'component-name', label: name.label, score: name.score });
-  if (depth.score > 0)
-    signals.push({ signal: 'nesting-depth', label: depth.label, score: depth.score });
-
-  const totalScore = signals.reduce((sum, s) => sum + s.score, 0);
-
-  // Human-readable summary
-  const topSignals = signals.sort((a, b) => b.score - a.score).slice(0, 2);
-  const summary =
-    topSignals.length > 0 ? topSignals.map((s) => s.label).join('; ') : 'Structural similarity';
+  const total = Math.round(raw.reduce((sum, signal) => sum + signal.score, 0));
+  const signals = raw
+    .map((signal) => ({ ...signal, score: Math.round(signal.score) }))
+    .filter((signal) => signal.score > 0)
+    .sort((left, right) => right.score - left.score || left.signal.localeCompare(right.signal));
+  const drift = total - signals.reduce((sum, signal) => sum + signal.score, 0);
+  if (drift !== 0 && signals.length > 0) signals[0].score += drift;
+  if (signals.length > 0 && signals[0].score <= 0) signals.shift();
 
   return {
-    id: makePairId(),
-    componentA: a,
-    componentB: b,
-    totalScore,
-    signals: signals.sort((a, b) => b.score - a.score),
-    summary,
+    total: Math.max(
+      0,
+      signals.reduce((sum, signal) => sum + signal.score, 0)
+    ),
+    signals,
   };
 }
 
-// ──────────────────────────────────────────
-// Build candidate groups
-// ──────────────────────────────────────────
-let groupIdCounter = 0;
-function makeGroupId() {
-  return `group_${++groupIdCounter}`;
+function markupLabel(
+  a: ReactComponent,
+  b: ReactComponent,
+  weight: (token: string) => number
+): string {
+  const parts: string[] = [];
+  if (a.rootTag && a.rootTag === b.rootTag) parts.push(`Root <${a.rootTag}>`);
+  const shared = sharedTokens(markupTokens(a), markupTokens(b), weight).filter(
+    (token) => token !== a.rootTag
+  );
+  const roles = shared
+    .filter((token) => token.startsWith('role:'))
+    .map((token) => `role=${token.slice(5)}`);
+  const tags = shared.filter((token) => !token.startsWith('role:')).map((token) => `<${token}>`);
+  if (roles.length > 0) parts.push(roles.join(', '));
+  if (tags.length > 0) parts.push(tags.join(', '));
+  return parts.join(' · ') || 'Similar markup';
+}
+
+function stylingLabel(
+  a: ReactComponent,
+  b: ReactComponent,
+  weight: (token: string) => number
+): string {
+  const shared = sharedTokens(a.classNames, b.classNames, weight);
+  return shared.length > 0 ? `Shared classes: ${shared.join(', ')}` : 'Similar class names';
+}
+
+function propsLabel(
+  a: ReactComponent,
+  b: ReactComponent,
+  weight: (token: string) => number
+): string {
+  const shared = sharedTokens(propTokens(a), propTokens(b), weight);
+  return shared.length > 0 ? `Shared props: ${shared.join(', ')}` : 'Similar props';
+}
+
+function nameLabel(a: ReactComponent, b: ReactComponent): string {
+  const lastA = lastWord(a.name) || a.name;
+  const lastB = lastWord(b.name) || b.name;
+  return lastA === lastB
+    ? `Names end in ${capitalize(lastA)}`
+    : `Related names: ${lastA} and ${lastB}`;
+}
+
+function behaviorLabel(
+  a: ReactComponent,
+  b: ReactComponent,
+  weight: (token: string) => number
+): string {
+  const shared = sharedTokens(behaviorTokens(a), behaviorTokens(b), weight);
+  const events = shared.filter((token) => !token.startsWith('cb:'));
+  const callbacks = shared
+    .filter((token) => token.startsWith('cb:'))
+    .map((token) => token.slice(3));
+  const parts: string[] = [];
+  if (events.length > 0) parts.push(`Shared events: ${events.join(', ')}`);
+  if (callbacks.length > 0) parts.push(`Shared callbacks: ${callbacks.join(', ')}`);
+  return parts.join(' · ') || 'Similar behavior';
+}
+
+function pairKey(a: string, b: string): string {
+  return [a, b].sort().join('|');
+}
+
+function pairId(a: string, b: string): string {
+  return `pair:${pairKey(a, b)}`;
+}
+
+interface Cluster {
+  ids: string[];
+}
+
+function clusterKey(ids: string[]): string {
+  return [...ids].sort().join('|');
+}
+
+function meanPairScore(
+  left: Cluster,
+  right: Cluster,
+  scoreOf: (a: string, b: string) => number
+): number {
+  let sum = 0;
+  let count = 0;
+  for (const a of left.ids) {
+    for (const b of right.ids) {
+      sum += scoreOf(a, b);
+      count++;
+    }
+  }
+  return count === 0 ? 0 : sum / count;
+}
+
+/** Short evidence lines for the queue, strongest signal first. */
+export function evidenceHighlights(group: CandidateGroup): string[] {
+  const best = new Map<SimilaritySignal, { score: number; label: string }>();
+  for (const pair of group.pairs) {
+    for (const signal of pair.signals) {
+      const current = best.get(signal.signal);
+      if (!current || signal.score > current.score) {
+        best.set(signal.signal, { score: signal.score, label: signal.label });
+      }
+    }
+  }
+  return [...best.values()]
+    .sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))
+    .slice(0, 2)
+    .map((signal) => signal.label);
 }
 
 export function buildCandidateGroups(components: ReactComponent[]): CandidateGroup[] {
-  if (components.length < 2) return [];
+  const candidates = components.filter((component) => component.exportType !== 'none');
+  if (candidates.length < 2) return [];
 
-  // Score all pairs
-  const pairs: CandidatePair[] = [];
-  for (let i = 0; i < components.length; i++) {
-    for (let j = i + 1; j < components.length; j++) {
-      // Skip same-file pairs — intra-file helpers (Btn, Field, StatCard, etc.)
-      // should never drive cross-component grouping.
-      if (components[i].file === components[j].file) continue;
-      if (!hasSpecificEvidence(components[i], components[j])) continue;
-      const pair = scorePair(components[i], components[j]);
-      if (pair.totalScore >= PAIR_THRESHOLD) {
-        pairs.push(pair);
+  const prepared = candidates.map((component) => ({
+    ...component,
+    rootTag: component.rootTag || component.jsxTags[0] || '',
+    ariaRoles: component.ariaRoles ?? [],
+  }));
+
+  const documentFrequency = new Map<string, number>();
+  const featureTokens = (component: ReactComponent): string[] => [
+    ...new Set([
+      ...markupTokens(component),
+      ...component.classNames,
+      ...propTokens(component),
+      ...behaviorTokens(component),
+      ...(component.rootTag ? [`root:${component.rootTag}`] : []),
+    ]),
+  ];
+  for (const component of prepared) {
+    for (const token of featureTokens(component)) {
+      documentFrequency.set(token, (documentFrequency.get(token) ?? 0) + 1);
+    }
+  }
+  const weight = (token: string) =>
+    Math.log(1 + prepared.length / Math.max(1, documentFrequency.get(token) ?? 0));
+
+  const byId = new Map(prepared.map((component) => [component.id, component]));
+  const scoredPairs = new Map<string, CandidatePair>();
+  for (let i = 0; i < prepared.length; i++) {
+    for (let j = i + 1; j < prepared.length; j++) {
+      const a = prepared[i];
+      const b = prepared[j];
+      const scored = scoreComponents(a, b, weight, prepared.length);
+      const [first, second] = [a, b].sort((left, right) => left.id.localeCompare(right.id));
+      scoredPairs.set(pairKey(a.id, b.id), {
+        id: pairId(a.id, b.id),
+        componentA: first,
+        componentB: second,
+        totalScore: scored.total,
+        signals: scored.signals,
+        summary: scored.signals
+          .slice(0, 2)
+          .map((signal) => signal.label)
+          .join('; '),
+      });
+    }
+  }
+
+  const scoreOf = (a: string, b: string) => scoredPairs.get(pairKey(a, b))?.totalScore ?? 0;
+  let clusters: Cluster[] = prepared.map((component) => ({ ids: [component.id] }));
+  while (clusters.length > 1) {
+    let bestMean = Number.NEGATIVE_INFINITY;
+    let bestKey = '';
+    let leftIndex = -1;
+    let rightIndex = -1;
+    for (let i = 0; i < clusters.length; i++) {
+      for (let j = i + 1; j < clusters.length; j++) {
+        const mean = meanPairScore(clusters[i], clusters[j], scoreOf);
+        if (mean + 1e-9 < GROUP_THRESHOLD) continue;
+        const key = [clusterKey(clusters[i].ids), clusterKey(clusters[j].ids)].sort().join('~');
+        if (mean > bestMean + 1e-9 || (Math.abs(mean - bestMean) <= 1e-9 && key < bestKey)) {
+          bestMean = mean;
+          bestKey = key;
+          leftIndex = i;
+          rightIndex = j;
+        }
       }
     }
-  }
-
-  // Sort pairs by score descending
-  pairs.sort((a, b) => b.totalScore - a.totalScore);
-
-  // Cluster: union-find driven only by high-confidence pairs so that a
-  // weakly-matching hub component (e.g. a shared layout helper) cannot
-  // transitively merge unrelated groups.
-  const parent = new Map<string, string>();
-  function find(id: string): string {
-    if (!parent.has(id)) parent.set(id, id);
-    // biome-ignore lint/style/noNonNullAssertion: parent.has(id) is guaranteed by the line above
-    const p = parent.get(id)!;
-    if (p !== id) parent.set(id, find(p));
-    // biome-ignore lint/style/noNonNullAssertion: path compression guarantees entry exists
-    return parent.get(id)!;
-  }
-  function union(a: string, b: string) {
-    parent.set(find(a), find(b));
-  }
-
-  for (const pair of pairs) {
-    if (pair.totalScore >= CLUSTER_THRESHOLD) {
-      union(pair.componentA.id, pair.componentB.id);
-    }
-  }
-
-  // Collect groups
-  const groupMap = new Map<string, Set<string>>();
-  for (const pair of pairs) {
-    const root = find(pair.componentA.id);
-    if (!groupMap.has(root)) groupMap.set(root, new Set());
-    groupMap.get(root)?.add(pair.componentA.id);
-    groupMap.get(root)?.add(pair.componentB.id);
+    if (leftIndex < 0 || rightIndex < 0) break;
+    const merged = { ids: [...clusters[leftIndex].ids, ...clusters[rightIndex].ids] };
+    clusters = clusters.filter((_, index) => index !== leftIndex && index !== rightIndex);
+    clusters.push(merged);
   }
 
   const groups: CandidateGroup[] = [];
-  for (const [, memberIds] of groupMap) {
-    const groupComponents = components.filter((c) => memberIds.has(c.id));
-    const groupPairs = pairs.filter(
-      (p) => memberIds.has(p.componentA.id) && memberIds.has(p.componentB.id)
-    );
-    // A large connected group can contain more pairs than the engine allows
-    // as function arguments. The pairs are already sorted by score.
-    const topScore = groupPairs[0].totalScore;
-
-    // Collect primary signals
-    const signalCounts = new Map<SimilaritySignal, number>();
-    for (const pair of groupPairs) {
-      for (const sig of pair.signals) {
-        signalCounts.set(sig.signal, (signalCounts.get(sig.signal) ?? 0) + sig.score);
+  for (const cluster of clusters) {
+    if (cluster.ids.length < 2) continue;
+    const members = cluster.ids
+      .map((id) => byId.get(id))
+      .filter((component): component is ReactComponent => !!component)
+      .sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+    const pairs: CandidatePair[] = [];
+    for (let i = 0; i < members.length; i++) {
+      for (let j = i + 1; j < members.length; j++) {
+        const pair = scoredPairs.get(pairKey(members[i].id, members[j].id));
+        if (pair) pairs.push(pair);
       }
     }
-    const primarySignals = [...signalCounts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3)
-      .map(([s]) => s);
-
+    pairs.sort((a, b) => b.totalScore - a.totalScore || a.id.localeCompare(b.id));
+    if (pairs.length === 0) continue;
+    const signalTotals = new Map<SimilaritySignal, number>();
+    for (const pair of pairs) {
+      for (const signal of pair.signals) {
+        signalTotals.set(signal.signal, (signalTotals.get(signal.signal) ?? 0) + signal.score);
+      }
+    }
+    const score = Math.round(pairs.reduce((sum, pair) => sum + pair.totalScore, 0) / pairs.length);
+    const confidence: GroupConfidence = score >= STRONG_GROUP_SCORE ? 'strong' : 'possible';
     groups.push({
-      id: makeGroupId(),
-      components: groupComponents,
-      pairs: groupPairs,
-      topScore,
-      primarySignals,
+      id: `group:${clusterKey(members.map((member) => member.id))}`,
+      components: members,
+      pairs,
+      score,
+      confidence,
+      primarySignals: [...signalTotals.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 3)
+        .map(([signal]) => signal),
     });
   }
 
-  // Sort groups by top score
-  return groups.sort((a, b) => b.topScore - a.topScore);
+  return groups.sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 }
 
-export { CLUSTER_THRESHOLD, PAIR_THRESHOLD, WEIGHTS };
+export { GROUP_THRESHOLD, STRONG_GROUP_SCORE, WEIGHTS };

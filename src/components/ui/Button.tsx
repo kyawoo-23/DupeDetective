@@ -1,4 +1,5 @@
 import type React from 'react';
+import { Link, type LinkProps } from 'react-router-dom';
 import { btnFocus, btnMotion } from './shared';
 
 // ──────────────────────────────────────────
@@ -23,14 +24,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantCls: Record<BtnVariant, string> = {
-  primary: `bg-blue-600 text-white shadow-sm shadow-blue-600/25 hover:bg-blue-700 hover:shadow-md disabled:bg-blue-300 disabled:shadow-none ${btnMotion}`,
+  primary: `bg-primary-600 text-white shadow-sm shadow-primary-600/25 hover:bg-primary-700 hover:shadow-md disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:hover:bg-slate-200 disabled:shadow-none ${btnMotion}`,
   secondary: `bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:shadow disabled:opacity-50 disabled:shadow-none ${btnMotion}`,
   ghost: `text-slate-600 hover:bg-slate-100 disabled:opacity-40 ${btnMotion}`,
   danger: `bg-red-600 text-white shadow-sm shadow-red-600/20 hover:bg-red-700 hover:shadow-md disabled:bg-red-300 disabled:shadow-none ${btnMotion}`,
   success: `bg-emerald-600 text-white shadow-sm shadow-emerald-600/25 hover:bg-emerald-700 hover:shadow-md disabled:bg-emerald-300 disabled:shadow-none ${btnMotion}`,
   successSoft: `bg-emerald-50 text-emerald-800 border border-emerald-200/90 shadow-sm shadow-emerald-900/5 hover:bg-emerald-100/90 hover:border-emerald-300 hover:shadow disabled:opacity-50 disabled:shadow-none ${btnMotion}`,
   amberSoft: `bg-amber-50 text-amber-900 border border-amber-200/90 shadow-sm shadow-amber-900/5 hover:bg-amber-100/90 hover:border-amber-300 hover:shadow disabled:opacity-50 disabled:shadow-none ${btnMotion}`,
-  link: `text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline disabled:opacity-40 ${btnMotion}`,
+  link: `text-primary-700 hover:text-primary-900 underline-offset-2 hover:underline disabled:opacity-40 ${btnMotion}`,
   linkMuted: `text-slate-500 hover:text-slate-700 underline-offset-2 hover:underline disabled:opacity-40 ${btnMotion}`,
 };
 const sizeCls: Record<BtnSize, string> = {
@@ -82,6 +83,31 @@ export function Button({
   );
 }
 
+interface LinkButtonProps extends LinkProps {
+  variant?: BtnVariant;
+  size?: BtnSize;
+}
+
+export function LinkButton({
+  variant = 'primary',
+  size = 'md',
+  className = '',
+  children,
+  ...rest
+}: LinkButtonProps) {
+  const isLink = variant === 'link' || variant === 'linkMuted';
+  return (
+    <Link
+      className={`inline-flex items-center justify-center gap-2 font-medium ${btnFocus} ${variantCls[variant]} ${
+        isLink ? 'text-sm px-0 py-0 min-h-0 rounded-sm' : sizeCls[size]
+      } ${className}`}
+      {...rest}
+    >
+      {children}
+    </Link>
+  );
+}
+
 // ──────────────────────────────────────────
 // IconButton
 // ──────────────────────────────────────────
@@ -116,9 +142,9 @@ interface RowButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const rowButtonCls: Record<RowButtonVariant, string> = {
-  card: 'bg-white border border-slate-200 rounded-lg px-4 py-3 text-sm hover:border-blue-400 hover:bg-slate-50/80',
+  card: 'bg-white border border-slate-200 rounded-lg px-4 py-3 text-sm hover:border-primary-400 hover:bg-slate-50/80',
   subtle:
-    'flex items-center gap-3 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg px-3 py-2',
+    'flex items-center gap-3 bg-slate-50 hover:bg-primary-50 border border-slate-200 hover:border-primary-300 rounded-lg px-3 py-2',
 };
 
 export function RowButton({ variant = 'card', className = '', children, ...rest }: RowButtonProps) {
@@ -130,52 +156,5 @@ export function RowButton({ variant = 'card', className = '', children, ...rest 
     >
       {children}
     </button>
-  );
-}
-
-// ──────────────────────────────────────────
-// SegmentedControl
-// ──────────────────────────────────────────
-interface SegmentedControlProps<T extends string> {
-  options: { value: T; label: React.ReactNode }[];
-  value: T;
-  onChange: (value: T) => void;
-  size?: 'sm' | 'md';
-  fullWidth?: boolean;
-  className?: string;
-}
-
-export function SegmentedControl<T extends string>({
-  options,
-  value,
-  onChange,
-  size = 'md',
-  fullWidth = false,
-  className = '',
-}: SegmentedControlProps<T>) {
-  const segmentSize =
-    size === 'sm' ? 'px-3 py-1.5 text-xs rounded-md' : 'py-2 px-4 rounded-md text-sm';
-  return (
-    <fieldset
-      className={`flex max-w-full gap-1 overflow-x-auto bg-slate-100 p-1 rounded-lg border-0 m-0 min-w-0 ${fullWidth ? 'w-full' : 'w-fit'} ${className}`}
-    >
-      {options.map((opt) => {
-        const active = value === opt.value;
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            className={`whitespace-nowrap font-medium transition-colors ${btnFocus} ${segmentSize} ${
-              fullWidth ? 'min-w-0 flex-1' : 'shrink-0'
-            } ${
-              active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </fieldset>
   );
 }

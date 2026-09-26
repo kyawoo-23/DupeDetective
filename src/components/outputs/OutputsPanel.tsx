@@ -1,28 +1,33 @@
-// Outputs panel: backlog, guidelines, agent instructions
-import { useState } from 'react';
+// Outputs panel: backlog and agent instructions
+import { type ReactNode, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import {
   buildBacklog,
   renderAgentInstruction,
-  renderBacklogMarkdown,
   renderCombinedAgentInstruction,
-  renderGuidelinesMarkdown,
 } from '../../lib/outputs';
 import { useAppStore } from '../../store';
-import type { Scan } from '../../types';
+import type { BacklogItem, Scan } from '../../types';
 import {
   Button,
   Card,
+  ComponentTag,
+  ComponentTagList,
   CopyButton,
   DecisionTypeBadge,
   Empty,
+  FileLocation,
+  MarkdownPreview,
+  MergeComponentTitle,
   MigrationStatusBadge,
   Modal,
+  mergeComponentsTitle,
+  SegmentedControl,
   Tabs,
-  TextArea,
 } from '../ui';
 
-type OutputTab = 'backlog' | 'guidelines' | 'instructions';
+type OutputTab = 'backlog' | 'instructions';
 
 interface OutputsPanelProps {
   scan: Scan;
@@ -30,17 +35,16 @@ interface OutputsPanelProps {
 
 export function OutputsPanel({ scan }: OutputsPanelProps) {
   const [tab, setTab] = useState<OutputTab>('backlog');
-  const merges = scan.decisions.filter((d) => d.type === 'merge');
   const backlogItems = buildBacklog(scan);
+  const pendingInstructionCount = backlogItems.filter((item) => item.status === 'pending').length;
 
   const tabs = [
     { id: 'backlog' as OutputTab, label: 'Backlog', count: backlogItems.length },
-    { id: 'guidelines' as OutputTab, label: 'Guidelines' },
     {
       id: 'instructions' as OutputTab,
       label: 'Agent Instructions',
       mobileLabel: 'Instructions',
-      count: merges.length,
+      count: pendingInstructionCount,
     },
   ];
 
@@ -49,7 +53,6 @@ export function OutputsPanel({ scan }: OutputsPanelProps) {
       <Tabs tabs={tabs} active={tab} onChange={(id) => setTab(id as OutputTab)} className="mb-6" />
 
       {tab === 'backlog' && <BacklogTab scan={scan} />}
-      {tab === 'guidelines' && <GuidelinesTab scan={scan} />}
       {tab === 'instructions' && <InstructionsTab scan={scan} />}
     </div>
   );
@@ -60,166 +63,174 @@ export function OutputsPanel({ scan }: OutputsPanelProps) {
 // ──────────────────────────────────────────
 function BacklogTab({ scan }: { scan: Scan }) {
   const items = buildBacklog(scan);
-  const markdown = renderBacklogMarkdown(scan);
-  const { updateDecision } = useAppStore();
+  const updateGroupDecision = useAppStore((state) => state.updateGroupDecision);
   const [completionModal, setCompletionModal] = useState<string | null>(null);
-  const [note, setNote] = useState('');
+  const keepSeparateCount = scan.groupDecisions.length - items.length;
+
+  const explanation = (
+    <p className="max-w-3xl text-sm text-slate-600">
+      Backlog tracks merge work only. Keep separate decisions
+      {keepSeparateCount > 0 && ` (${keepSeparateCount} in this scan)`} stay under Reviewed in the
+      Review Queue.
+    </p>
+  );
 
   if (items.length === 0) {
     return (
-      <OutputEmpty
-        scanId={scan.id}
-        title="No backlog items yet"
-        description="Choose Merge in the review queue to add items here."
-      />
+      <div className="flex flex-col gap-6">
+        {explanation}
+        <OutputEmpty
+          scanId={scan.id}
+          title="No backlog items yet"
+          description="Merge at least one component in a group to add items here."
+        />
+      </div>
     );
   }
 
-  const handleComplete = (decisionId: string) => {
-    updateDecision(decisionId, {
-      migrationStatus: 'complete',
-      completionNote: note.trim() || undefined,
-    });
+  const pendingItems = items.filter((item) => item.status === 'pending');
+  const completeItems = items.filter((item) => item.status === 'complete');
+
+  const handleComplete = (item: BacklogItem) => {
+    updateGroupDecision(item.decisionId, { migrationStatus: 'complete' });
     setCompletionModal(null);
-    setNote('');
+    toast.success(`Marked complete: ${backlogItemTitle(item)}`);
   };
 
+  const handleMarkPending = (item: BacklogItem) => {
+    updateGroupDecision(item.decisionId, { migrationStatus: 'pending' });
+    toast.success(`Back to pending: ${backlogItemTitle(item)}`);
+  };
+
+  const sectionHeading = 'mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500';
+
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <CopyButton text={markdown} label="Copy Markdown" />
-      </div>
+    <div className="flex flex-col gap-6">
+      {explanation}
 
-      {items.map((item) => {
-        const decision = scan.decisions.find((d) => d.id === item.decisionId);
-        return (
-          <Card key={item.id} className="min-w-0 p-4 sm:p-5">
-            <div className="flex flex-col items-start justify-between gap-3 mb-3 sm:flex-row">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <DecisionTypeBadge type={item.type} />
-                  <MigrationStatusBadge status={item.status} />
-                </div>
-                <h3 className="break-words text-sm font-semibold text-slate-900">
-                  {item.componentNames.join(' + ')}
-                </h3>
-              </div>
-              {decision?.type === 'merge' && item.status === 'pending' && (
-                <Button
-                  variant="success"
-                  size="sm"
-                  onClick={() => {
-                    setCompletionModal(item.decisionId);
-                    setNote('');
-                  }}
-                >
-                  Mark Complete
-                </Button>
-              )}
-            </div>
+      {pendingItems.length > 0 && (
+        <section>
+          <h2 className={sectionHeading}>Pending ({pendingItems.length})</h2>
+          <div className="flex flex-col gap-3">
+            {pendingItems.map((item) => (
+              <BacklogItemCard
+                key={item.id}
+                item={item}
+                action={
+                  <Button
+                    variant="successSoft"
+                    size="sm"
+                    className="shrink-0 self-start"
+                    onClick={() => setCompletionModal(item.decisionId)}
+                  >
+                    Mark Complete
+                  </Button>
+                }
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
-            <div className="text-xs text-slate-500 space-y-1 mb-3">
-              {item.sourcePaths.map((path, i) => (
-                <div key={path} className="break-all font-mono">
-                  {item.componentNames[i]} → <span className="text-slate-400">{path}</span>
-                </div>
-              ))}
-            </div>
-
-            {item.canonicalComponent && (
-              <p className="break-all text-xs text-blue-700 bg-blue-50 rounded px-2 py-1 mb-2">
-                Keep: <code>{item.canonicalComponent}</code>
-              </p>
-            )}
-
-            <p className="break-words text-sm text-slate-700">{item.rationale}</p>
-
-            {item.completionNote && (
-              <p className="text-xs text-emerald-700 mt-2 bg-emerald-50 rounded px-2 py-1">
-                Note: {item.completionNote}
-              </p>
-            )}
-
-            <p className="text-xs text-slate-400 mt-2 italic">{item.suggestedNextStep}</p>
-          </Card>
-        );
-      })}
-
-      {/* Download button */}
-      <div className="flex justify-end">
-        <Button variant="secondary" size="sm" onClick={() => downloadText(markdown, 'backlog.md')}>
-          ↓ Download backlog.md
-        </Button>
-      </div>
+      {completeItems.length > 0 && (
+        <section>
+          <h2 className={sectionHeading}>Complete ({completeItems.length})</h2>
+          <div className="flex flex-col gap-3">
+            {completeItems.map((item) => (
+              <BacklogItemCard
+                key={item.id}
+                item={item}
+                action={
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0 self-start"
+                    onClick={() => handleMarkPending(item)}
+                  >
+                    Set Back to Pending
+                  </Button>
+                }
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <Modal
         open={!!completionModal}
         onClose={() => setCompletionModal(null)}
         title="Confirm Complete"
-      >
-        <div className="flex flex-col gap-4">
-          <p className="text-sm text-slate-600">
-            Mark this merge as done. The component you kept will appear in the guidelines.
-          </p>
-          <TextArea
-            label="Completion note (optional)"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            placeholder="What was verified or changed…"
-          />
-          <div className="flex gap-2 justify-end">
+        width="max-w-sm"
+        footer={
+          <>
             <Button variant="secondary" onClick={() => setCompletionModal(null)}>
               Cancel
             </Button>
             <Button
               variant="success"
-              onClick={() => completionModal && handleComplete(completionModal)}
+              onClick={() => {
+                const item = items.find((entry) => entry.decisionId === completionModal);
+                if (item) handleComplete(item);
+              }}
             >
-              Confirm
+              Confirm Complete
             </Button>
-          </div>
-        </div>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-600">
+          Mark this merge as done. It will show as complete in your backlog.
+        </p>
       </Modal>
     </div>
   );
 }
 
-// ──────────────────────────────────────────
-// Guidelines tab
-// ──────────────────────────────────────────
-function GuidelinesTab({ scan }: { scan: Scan }) {
-  const markdown = renderGuidelinesMarkdown(scan);
-  const hasContent = scan.decisions.some(
-    (d) => d.type === 'merge' || (d.type === 'keep' && d.rationale.trim())
-  );
+function backlogItemTitle(item: BacklogItem): string {
+  return mergeComponentsTitle(item.componentNames, item.canonicalComponent ?? 'unknown');
+}
 
-  if (!hasContent) {
-    return (
-      <OutputEmpty
-        scanId={scan.id}
-        title="No guidelines yet"
-        description="Finished merges and keep-separate notes appear here. A blank keep-separate decision does not."
-      />
-    );
-  }
-
+function BacklogItemCard({ item, action }: { item: BacklogItem; action: ReactNode }) {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap justify-end gap-2">
-        <CopyButton text={markdown} label="Copy Markdown" />
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => downloadText(markdown, 'component-guidelines.md')}
-        >
-          ↓ Download component-guidelines.md
-        </Button>
+    <Card className="queue-card min-w-0">
+      <div className="flex min-w-0 flex-col gap-3 p-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="break-words text-sm font-semibold text-slate-900">
+            <MergeComponentTitle
+              sources={item.componentNames}
+              target={item.canonicalComponent ?? 'unknown'}
+            />
+            <DecisionTypeBadge outcome={item.outcome} className="ml-2 align-middle" />
+          </h3>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+            <span>{item.componentNames.length} to replace</span>
+            <MigrationStatusBadge status={item.status} />
+          </div>
+          <div className="mt-3 flex flex-col gap-1.5">
+            {item.componentNames.map((name, idx) => (
+              <div
+                key={`${name}:${item.sourcePaths[idx]}`}
+                className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-slate-600"
+              >
+                <ComponentTag name={name} className="font-medium text-slate-700" />
+                <FileLocation file={item.sourcePaths[idx]} />
+              </div>
+            ))}
+          </div>
+          {item.unchangedNames.length > 0 && (
+            <p className="mt-2 break-words text-xs text-slate-500">
+              Leave unchanged: <ComponentTagList names={item.unchangedNames} />
+            </p>
+          )}
+          {item.rationale && (
+            <p className="mt-2 break-words text-xs text-slate-600">
+              <span className="font-medium text-slate-700">Note:</span> {item.rationale}
+            </p>
+          )}
+        </div>
+        {action}
       </div>
-      <Card className="min-w-0 p-4 sm:p-6">
-        <MarkdownPreview content={markdown} />
-      </Card>
-    </div>
+    </Card>
   );
 }
 
@@ -227,15 +238,27 @@ function GuidelinesTab({ scan }: { scan: Scan }) {
 // Instructions tab
 // ──────────────────────────────────────────
 function InstructionsTab({ scan }: { scan: Scan }) {
-  const merges = scan.decisions.filter((d) => d.type === 'merge');
-  const [selected, setSelected] = useState<Set<string>>(new Set(merges.map((d) => d.id)));
+  const allMerges = buildBacklog(scan);
+  const mergeGroups = allMerges.filter((item) => item.status === 'pending');
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(mergeGroups.map((item) => item.decisionId))
+  );
 
-  if (merges.length === 0) {
+  if (allMerges.length === 0) {
     return (
       <OutputEmpty
         scanId={scan.id}
         title="No merge decisions yet"
-        description="Choose Merge in the review queue to generate agent instructions."
+        description="Merge at least one component in a group to generate agent instructions."
+      />
+    );
+  }
+
+  if (mergeGroups.length === 0) {
+    return (
+      <Empty
+        title="No pending merge instructions"
+        description="Completed merges stay on the Backlog tab. Mark one pending again to copy agent instructions."
       />
     );
   }
@@ -253,7 +276,7 @@ function InstructionsTab({ scan }: { scan: Scan }) {
               variant="link"
               size="sm"
               className="text-xs"
-              onClick={() => setSelected(new Set(merges.map((d) => d.id)))}
+              onClick={() => setSelected(new Set(mergeGroups.map((item) => item.decisionId)))}
             >
               All
             </Button>
@@ -268,29 +291,25 @@ function InstructionsTab({ scan }: { scan: Scan }) {
           </div>
         </div>
         <div className="flex flex-col gap-2">
-          {merges.map((d) => {
-            const components = d.componentIds
-              .map((id) => scan.components.find((c) => c.id === id))
-              .filter(Boolean);
+          {mergeGroups.map((item) => {
             return (
               <label
-                key={d.id}
+                key={item.id}
                 className="flex min-h-11 min-w-0 flex-wrap items-center gap-2 cursor-pointer"
               >
                 <input
                   type="checkbox"
-                  checked={selected.has(d.id)}
+                  checked={selected.has(item.decisionId)}
                   onChange={(e) => {
                     const next = new Set(selected);
-                    e.target.checked ? next.add(d.id) : next.delete(d.id);
+                    e.target.checked ? next.add(item.decisionId) : next.delete(item.decisionId);
                     setSelected(next);
                   }}
-                  className="h-4 w-4 rounded accent-blue-600"
+                  className="h-4 w-4 rounded accent-primary-600"
                 />
                 <span className="min-w-0 break-words text-sm text-slate-700">
-                  {components.map((c) => c?.name).join(' + ')}
+                  <ComponentTagList names={item.componentNames} separator=" + " />
                 </span>
-                <MigrationStatusBadge status={d.migrationStatus} />
               </label>
             );
           })}
@@ -306,26 +325,19 @@ function InstructionsTab({ scan }: { scan: Scan }) {
             </h3>
             <CopyButton text={combined} label="Copy instruction" />
           </div>
-          <Card className="min-w-0 p-4">
-            <pre className="max-h-[400px] min-w-0 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-5 text-slate-700">
-              {combined}
-            </pre>
-          </Card>
+          <InstructionMarkdownPanel markdown={combined} />
         </div>
       )}
 
       {/* Individual instructions */}
       <h3 className="text-sm font-semibold text-slate-700 mt-2">Individual instructions</h3>
-      {merges.map((d) => {
-        const instruction = renderAgentInstruction(scan, d.id);
-        const components = d.componentIds
-          .map((id) => scan.components.find((c) => c.id === id))
-          .filter(Boolean);
+      {mergeGroups.map((item) => {
+        const instruction = renderAgentInstruction(scan, item.decisionId);
         return (
-          <Card key={d.id} className="min-w-0 p-4">
+          <Card key={item.id} className="min-w-0 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
               <span className="min-w-0 break-words text-sm font-medium text-slate-800">
-                {components.map((c) => c?.name).join(' + ')}
+                <ComponentTagList names={item.componentNames} separator=" + " />
               </span>
               <CopyButton text={instruction} label="Copy" />
             </div>
@@ -336,6 +348,37 @@ function InstructionsTab({ scan }: { scan: Scan }) {
         );
       })}
     </div>
+  );
+}
+
+type InstructionView = 'preview' | 'raw';
+
+function InstructionMarkdownPanel({ markdown }: { markdown: string }) {
+  const [view, setView] = useState<InstructionView>('preview');
+
+  return (
+    <Card className="min-w-0 overflow-hidden p-0">
+      <div className="border-b border-slate-200 px-4 py-3">
+        <SegmentedControl
+          size="sm"
+          options={[
+            { value: 'preview', label: 'Preview' },
+            { value: 'raw', label: 'Raw MD' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </div>
+      <div className="p-4">
+        {view === 'preview' ? (
+          <MarkdownPreview source={markdown} className="max-h-[400px] overflow-auto" />
+        ) : (
+          <pre className="max-h-[400px] min-w-0 overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-5 text-slate-700">
+            {markdown}
+          </pre>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -356,57 +399,10 @@ function OutputEmpty({
       <Empty title={title} description={description} />
       <Link
         to={`/scan/${scanId}?tab=queue`}
-        className="-mt-9 inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-blue-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="-mt-9 inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-primary-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
       >
         Go to review queue →
       </Link>
     </div>
   );
-}
-
-function MarkdownPreview({ content }: { content: string }) {
-  // Escape decision notes before adding the small set of supported Markdown tags.
-  const html = content
-    .replace(
-      /[&<>"']/g,
-      (character) =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ??
-        character
-    )
-    .replace(/^### (.+)$/gm, '<h3 class="text-sm font-semibold mt-4 mb-1 text-slate-800">$1</h3>')
-    .replace(
-      /^## (.+)$/gm,
-      '<h2 class="text-base font-semibold mt-6 mb-2 text-slate-900 border-b border-slate-200 pb-1">$1</h2>'
-    )
-    .replace(/^# (.+)$/gm, '<h1 class="text-xl font-bold mb-4 text-slate-900">$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(
-      /`([^`]+)`/g,
-      '<code class="bg-slate-100 text-slate-800 rounded px-1 font-mono text-xs">$1</code>'
-    )
-    .replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-sm text-slate-700">$1</li>')
-    .replace(
-      /^&gt; (.+)$/gm,
-      '<blockquote class="border-l-4 border-slate-300 pl-3 text-slate-500 text-sm italic">$1</blockquote>'
-    )
-    .replace(/^---$/gm, '<hr class="border-slate-200 my-4"/>')
-    .replace(/\n\n/g, '<br/><br/>');
-
-  return (
-    <div
-      className="prose prose-sm max-w-none min-w-0 break-words text-slate-700 [&_code]:break-all"
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: user text is HTML-escaped before Markdown tags are added
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
-}
-
-function downloadText(content: string, filename: string) {
-  const blob = new Blob([content], { type: 'text/markdown' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }

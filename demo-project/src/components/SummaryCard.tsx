@@ -26,14 +26,14 @@ export function SummaryCard({
 }: SummaryCardProps) {
   const bg = variant === "tinted" ? "bg-indigo-50 border-indigo-100" : "bg-white border-slate-200";
   return (
-    <div className={`rounded-xl border p-5 ${bg}`}>
+    <div className={`rounded-lg border p-5 ${bg}`}>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-medium text-slate-500">{label}</span>
         {icon && (
           <span className="text-slate-400">{icon}</span>
         )}
       </div>
-      <p className="text-2xl font-bold text-slate-900 leading-none">{value}</p>
+      <p className="text-2xl font-semibold tracking-tight text-slate-900 leading-none">{value}</p>
       {trend && (
         <p className={`text-xs font-semibold mt-2 ${trendUp ? "text-emerald-600" : "text-red-500"}`}>
           {trendUp ? "↑" : "↓"} {trend}

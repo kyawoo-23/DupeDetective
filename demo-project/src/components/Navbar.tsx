@@ -36,17 +36,14 @@ export default function Navbar({ onOpenModal }: NavbarProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+    <header className="sticky top-0 z-40 bg-slate-100/90 backdrop-blur-md border-b border-slate-200">
       <nav
         className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between"
         aria-label="Primary navigation"
       >
         {/* Logo */}
-        <a href="#" className="flex items-center gap-2 font-semibold text-slate-900 text-sm">
-          <span className="inline-flex gap-0.5" aria-hidden="true">
-            <span className="block w-2.5 h-2.5 rounded-sm bg-indigo-500" />
-            <span className="block w-2.5 h-2.5 rounded-sm bg-indigo-300" />
-          </span>
+        <a href="#" className="flex items-center gap-2.5 font-semibold tracking-tight text-slate-900 text-sm">
+          <span className="inline-block w-2 h-2 rounded-full bg-indigo-600" aria-hidden="true" />
           Modules
         </a>
 

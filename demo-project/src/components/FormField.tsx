@@ -45,7 +45,7 @@ export function FormField({
         required={required}
         aria-describedby={hint || errorMessage ? `${id}-desc` : undefined}
         aria-invalid={hasError}
-        className={`block w-full rounded-md border px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 ${
+        className={`block w-full rounded-md border bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500 ${
           hasError ? "border-red-400" : "border-slate-300"
         }`}
       />
@@ -54,7 +54,7 @@ export function FormField({
           id={`${id}-desc`}
           className={`text-xs ${hasError ? "text-red-600" : "text-slate-400"}`}
         >
-          {errorMessage ?? hint}
+          {errorMessage || hint}
         </p>
       )}
     </div>

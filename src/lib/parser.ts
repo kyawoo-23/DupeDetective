@@ -8,15 +8,15 @@ import * as parser from '@babel/parser';
 import traverseModule from '@babel/traverse';
 import * as t from '@babel/types';
 import type { ParseError, ReactComponent } from '../types';
+import { inferPreviewProps } from './previewProps';
 
 const traverse =
   typeof traverseModule === 'function'
     ? traverseModule
     : (traverseModule as unknown as { default: typeof traverseModule }).default;
 
-let componentIdCounter = 0;
-function makeComponentId() {
-  return `comp_${++componentIdCounter}_${Math.random().toString(36).slice(2, 6)}`;
+function componentId(file: string, name: string, line: number) {
+  return `${file}#${name}@${line}`;
 }
 
 function isComponentName(name: string): boolean {
@@ -46,8 +46,8 @@ function tsTypeToString(node: t.TSType): string {
 function propTypeToString(node: t.TSType, ast: t.File): string {
   if (t.isTSTypeReference(node) && t.isIdentifier(node.typeName)) {
     const typeName = node.typeName.name;
-    const alias = ast.program.body.find((statement) =>
-      t.isTSTypeAliasDeclaration(statement) && statement.id.name === typeName
+    const alias = ast.program.body.find(
+      (statement) => t.isTSTypeAliasDeclaration(statement) && statement.id.name === typeName
     );
     if (alias && t.isTSTypeAliasDeclaration(alias)) return tsTypeToString(alias.typeAnnotation);
   }
@@ -63,15 +63,88 @@ interface ComponentFeatures {
   propTypes: Record<string, string>;
   eventHandlers: string[];
   classNames: string[];
+  rootTag: string;
+  ariaRoles: string[];
   jsxDepth: number;
   jsxNodeCount: number;
   hasJsx: boolean;
+}
+
+function pushClassTokens(value: string, into: string[]) {
+  for (const token of value.split(/\s+/)) {
+    if (token) into.push(token);
+  }
+}
+
+/** Static class tokens from string literals, template text, ternaries, and cn/clsx-style calls. */
+function collectClassTokens(expr: t.Node | null | undefined, into: string[]) {
+  if (!expr || typeof expr !== 'object') return;
+  if (t.isStringLiteral(expr)) {
+    pushClassTokens(expr.value, into);
+    return;
+  }
+  if (t.isTemplateLiteral(expr)) {
+    for (const quasi of expr.quasis) pushClassTokens(quasi.value.cooked ?? quasi.value.raw, into);
+    for (const expression of expr.expressions) collectClassTokens(expression, into);
+    return;
+  }
+  if (
+    t.isParenthesizedExpression(expr) ||
+    t.isTSAsExpression(expr) ||
+    t.isTSTypeAssertion(expr) ||
+    t.isTSNonNullExpression(expr) ||
+    t.isTSSatisfiesExpression(expr)
+  ) {
+    collectClassTokens(expr.expression, into);
+    return;
+  }
+  if (t.isConditionalExpression(expr)) {
+    collectClassTokens(expr.consequent, into);
+    collectClassTokens(expr.alternate, into);
+    return;
+  }
+  if (t.isLogicalExpression(expr)) {
+    collectClassTokens(expr.left, into);
+    collectClassTokens(expr.right, into);
+    return;
+  }
+  if (t.isCallExpression(expr) || t.isNewExpression(expr)) {
+    for (const arg of expr.arguments) {
+      collectClassTokens(t.isSpreadElement(arg) ? arg.argument : arg, into);
+    }
+    return;
+  }
+  if (t.isArrayExpression(expr)) {
+    for (const element of expr.elements) {
+      if (!element) continue;
+      collectClassTokens(t.isSpreadElement(element) ? element.argument : element, into);
+    }
+    return;
+  }
+  if (t.isObjectExpression(expr)) {
+    for (const prop of expr.properties) {
+      if (!t.isObjectProperty(prop)) continue;
+      if (!prop.computed && t.isStringLiteral(prop.key)) pushClassTokens(prop.key.value, into);
+      else if (!prop.computed && t.isIdentifier(prop.key)) into.push(prop.key.name);
+      collectClassTokens(prop.value, into);
+    }
+  }
+}
+
+function jsxStringAttribute(value: t.JSXAttribute['value']): string | null {
+  if (t.isStringLiteral(value)) return value.value;
+  if (t.isJSXExpressionContainer(value) && t.isStringLiteral(value.expression)) {
+    return value.expression.value;
+  }
+  return null;
 }
 
 function extractFeaturesFromNode(node: t.Node): ComponentFeatures {
   const jsxTags: string[] = [];
   const eventHandlers: string[] = [];
   const classNames: string[] = [];
+  const ariaRoles: string[] = [];
+  let rootTag = '';
   let jsxDepth = 0;
   let currentDepth = 0;
   let jsxNodeCount = 0;
@@ -108,8 +181,9 @@ function extractFeaturesFromNode(node: t.Node): ComponentFeatures {
 
       case 'JSXOpeningElement': {
         const name = (n as t.JSXOpeningElement).name;
+        let tagName = '';
         if (t.isJSXIdentifier(name)) {
-          jsxTags.push(name.name);
+          tagName = name.name;
         } else if (t.isJSXMemberExpression(name)) {
           const parts: string[] = [];
           let cur: t.JSXMemberExpression | t.JSXIdentifier = name;
@@ -118,7 +192,11 @@ function extractFeaturesFromNode(node: t.Node): ComponentFeatures {
             cur = cur.object;
           }
           if (t.isJSXIdentifier(cur)) parts.unshift(cur.name);
-          jsxTags.push(parts.join('.'));
+          tagName = parts.join('.');
+        }
+        if (tagName) {
+          jsxTags.push(tagName);
+          if (!rootTag) rootTag = tagName;
         }
         // Check attributes
         for (const attr of (n as t.JSXOpeningElement).attributes) {
@@ -134,11 +212,13 @@ function extractFeaturesFromNode(node: t.Node): ComponentFeatures {
           }
           if (attrName === 'className') {
             const val = attr.value;
-            if (t.isStringLiteral(val)) {
-              classNames.push(...val.value.split(/\s+/).filter(Boolean));
-            } else if (t.isJSXExpressionContainer(val) && t.isStringLiteral(val.expression)) {
-              classNames.push(...val.expression.value.split(/\s+/).filter(Boolean));
-            }
+            if (t.isStringLiteral(val)) pushClassTokens(val.value, classNames);
+            else if (t.isJSXExpressionContainer(val))
+              collectClassTokens(val.expression, classNames);
+          }
+          if (attrName === 'role') {
+            const role = jsxStringAttribute(attr.value);
+            if (role) ariaRoles.push(role);
           }
         }
         return;
@@ -161,13 +241,34 @@ function extractFeaturesFromNode(node: t.Node): ComponentFeatures {
     propTypes: {},
     eventHandlers: [...new Set(eventHandlers)],
     classNames: [...new Set(classNames)],
+    rootTag,
+    ariaRoles: [...new Set(ariaRoles)],
     jsxDepth,
     jsxNodeCount,
     hasJsx: foundJsx,
   };
 }
 
-function extractProps(params: t.Function['params'], ast: t.File, fallbackTypeName?: string): {
+const INPUT_ATTRIBUTE_PROPS = ['value', 'onChange', 'placeholder', 'name', 'disabled'] as const;
+
+function heritageName(expr: t.TSEntityName | t.Expression): string | null {
+  if (t.isIdentifier(expr)) return expr.name;
+  if (t.isTSQualifiedName(expr)) return expr.right.name;
+  if (t.isMemberExpression(expr) && t.isIdentifier(expr.property)) return expr.property.name;
+  return null;
+}
+
+function extendsInputHtmlAttributes(declaration: t.TSInterfaceDeclaration): boolean {
+  return (declaration.extends ?? []).some(
+    (clause) => heritageName(clause.expression) === 'InputHTMLAttributes'
+  );
+}
+
+function extractProps(
+  params: t.Function['params'],
+  ast: t.File,
+  fallbackTypeName?: string
+): {
   propNames: string[];
   propTypes: Record<string, string>;
 } {
@@ -187,15 +288,26 @@ function extractProps(params: t.Function['params'], ast: t.File, fallbackTypeNam
       : null;
     let members: t.TSTypeElement[] = [];
     if (annotation && t.isTSTypeLiteral(annotation)) members = annotation.members;
-    const typeName = annotation && t.isTSTypeReference(annotation) && t.isIdentifier(annotation.typeName)
-      ? annotation.typeName.name : fallbackTypeName;
+    const typeName =
+      annotation && t.isTSTypeReference(annotation) && t.isIdentifier(annotation.typeName)
+        ? annotation.typeName.name
+        : fallbackTypeName;
+    let inheritsInputAttributes = false;
     if (typeName) {
-      const declaration = ast.program.body.find((statement) =>
-        (t.isTSInterfaceDeclaration(statement) || t.isTSTypeAliasDeclaration(statement)) &&
-        statement.id.name === typeName
+      const declaration = ast.program.body.find(
+        (statement) =>
+          (t.isTSInterfaceDeclaration(statement) || t.isTSTypeAliasDeclaration(statement)) &&
+          statement.id.name === typeName
       );
-      if (declaration && t.isTSInterfaceDeclaration(declaration)) members = declaration.body.body;
-      if (declaration && t.isTSTypeAliasDeclaration(declaration) && t.isTSTypeLiteral(declaration.typeAnnotation)) {
+      if (declaration && t.isTSInterfaceDeclaration(declaration)) {
+        members = declaration.body.body;
+        inheritsInputAttributes = extendsInputHtmlAttributes(declaration);
+      }
+      if (
+        declaration &&
+        t.isTSTypeAliasDeclaration(declaration) &&
+        t.isTSTypeLiteral(declaration.typeAnnotation)
+      ) {
         members = declaration.typeAnnotation.members;
       }
     }
@@ -225,6 +337,15 @@ function extractProps(params: t.Function['params'], ast: t.File, fallbackTypeNam
         }
       } else if (t.isRestElement(prop)) {
         // skip
+      }
+    }
+    if (inheritsInputAttributes) {
+      for (const name of INPUT_ATTRIBUTE_PROPS) {
+        if (!propNames.includes(name)) propNames.push(name);
+        if (!propTypes[name]) {
+          propTypes[name] =
+            name === 'onChange' ? '() => void' : name === 'disabled' ? 'boolean' : 'string';
+        }
       }
     }
   }
@@ -266,26 +387,66 @@ function isStaticPreviewValue(node: t.Node | null | undefined): boolean {
 function extractPreviewDependencies(path: any, source: string): string {
   const declarations = new Map<number, string>();
   const visited = new Set<number>();
+  if (path.node.start != null) visited.add(path.node.start);
+  if (t.isVariableDeclaration(path.node))
+    for (const node of path.node.declarations) if (node.start != null) visited.add(node.start);
   const collect = (current: any) => {
     current.traverse({
       ReferencedIdentifier(reference: any) {
         const binding = reference.scope.getBinding(reference.node.name);
         if (!binding) return;
         const bindingPath = binding.path;
-        const declaration = bindingPath.isVariableDeclarator() ? bindingPath.parentPath : bindingPath;
+        const declaration = bindingPath.isVariableDeclarator()
+          ? bindingPath.parentPath
+          : bindingPath;
         const parent = declaration?.parentPath;
-        if (!parent?.isProgram() && !parent?.isExportNamedDeclaration() && !parent?.isExportDefaultDeclaration()) return;
+        if (
+          !parent?.isProgram() &&
+          !parent?.isExportNamedDeclaration() &&
+          !parent?.isExportDefaultDeclaration() &&
+          !parent?.isImportDeclaration()
+        )
+          return;
         const node = bindingPath.node as t.Node;
         if (node.start == null || node.end == null || visited.has(node.start)) return;
         if (node.end - node.start > 10_000 || declarations.size >= 30) return;
 
         let code: string | null = null;
+        if (
+          bindingPath.isImportSpecifier() ||
+          bindingPath.isImportDefaultSpecifier() ||
+          bindingPath.isImportNamespaceSpecifier()
+        ) {
+          const importDeclaration = bindingPath.parentPath.node;
+          if (
+            t.isImportDeclaration(importDeclaration) &&
+            ['react', 'react-dom'].includes(importDeclaration.source.value)
+          ) {
+            const specifier = node as
+              | t.ImportSpecifier
+              | t.ImportDefaultSpecifier
+              | t.ImportNamespaceSpecifier;
+            const runtime = importDeclaration.source.value === 'react' ? 'React' : 'ReactDOM';
+            const imported = t.isImportSpecifier(specifier)
+              ? t.isIdentifier(specifier.imported)
+                ? specifier.imported.name
+                : specifier.imported.value
+              : null;
+            if (specifier.local.name !== (imported ?? runtime))
+              code = `const ${specifier.local.name} = ${runtime}${imported ? `.${imported}` : ''};`;
+          }
+        }
+
         if (bindingPath.isFunctionDeclaration() && t.isFunctionDeclaration(node) && node.id) {
           code = source.slice(node.start, node.end);
         } else if (bindingPath.isVariableDeclarator()) {
           const declarator = node as t.VariableDeclarator;
-          if (t.isIdentifier(declarator.id) &&
-              (isStaticPreviewValue(declarator.init) || t.isArrowFunctionExpression(declarator.init) || t.isFunctionExpression(declarator.init))) {
+          if (
+            t.isIdentifier(declarator.id) &&
+            (isStaticPreviewValue(declarator.init) ||
+              t.isArrowFunctionExpression(declarator.init) ||
+              t.isFunctionExpression(declarator.init))
+          ) {
             code = `const ${source.slice(node.start, node.end)};`;
           }
         }
@@ -302,6 +463,64 @@ function extractPreviewDependencies(path: any, source: string): string {
     .sort(([a], [b]) => a - b)
     .map(([, declaration]) => declaration)
     .join('\n');
+}
+
+function unwrapPreviewFunction(
+  node: t.Node | null | undefined
+): t.ArrowFunctionExpression | t.FunctionExpression | null {
+  if (t.isArrowFunctionExpression(node) || t.isFunctionExpression(node)) return node;
+  if (t.isTSAsExpression(node) || t.isTSSatisfiesExpression(node))
+    return unwrapPreviewFunction(node.expression);
+  if (t.isCallExpression(node)) {
+    const callee = node.callee;
+    const wrapper = t.isIdentifier(callee)
+      ? callee.name
+      : t.isMemberExpression(callee) && t.isIdentifier(callee.property)
+        ? callee.property.name
+        : '';
+    if (['memo', 'forwardRef'].includes(wrapper)) return unwrapPreviewFunction(node.arguments[0]);
+  }
+  return null;
+}
+
+function hasRenderReturn(node: t.Node): boolean {
+  let found = false;
+  const visit = (current: t.Node) => {
+    if (current !== node && t.isFunction(current)) return;
+    const value = t.isReturnStatement(current)
+      ? current.argument
+      : current === node &&
+          t.isArrowFunctionExpression(current) &&
+          !t.isBlockStatement(current.body)
+        ? current.body
+        : null;
+    if (
+      t.isNullLiteral(value) ||
+      t.isBooleanLiteral(value) ||
+      t.isStringLiteral(value) ||
+      t.isNumericLiteral(value)
+    )
+      found = true;
+    if (
+      t.isCallExpression(value) &&
+      ((t.isIdentifier(value.callee) &&
+        ['createElement', 'cloneElement', 'createPortal'].includes(value.callee.name)) ||
+        (t.isMemberExpression(value.callee) &&
+          t.isIdentifier(value.callee.property) &&
+          ['createElement', 'cloneElement', 'createPortal'].includes(value.callee.property.name)))
+    )
+      found = true;
+    for (const key of t.VISITOR_KEYS[current.type] ?? []) {
+      const child = (current as unknown as Record<string, t.Node | t.Node[] | undefined>)[key];
+      if (Array.isArray(child))
+        child.forEach((n) => {
+          if (n?.type) visit(n);
+        });
+      else if (child?.type) visit(child);
+    }
+  };
+  visit(node);
+  return found;
 }
 
 // ──────────────────────────────────────────
@@ -335,13 +554,51 @@ export function parseFile(
     return { components, errors };
   }
 
+  const anonymousDefault = ast.program.body.find(
+    (statement) =>
+      t.isExportDefaultDeclaration(statement) &&
+      (t.isFunctionDeclaration(statement.declaration) || t.isClassDeclaration(statement.declaration)
+        ? !statement.declaration.id
+        : !t.isIdentifier(statement.declaration))
+  );
+  if (
+    anonymousDefault &&
+    t.isExportDefaultDeclaration(anonymousDefault) &&
+    !/(^|\/)use[-A-Z]/.test(filePath) &&
+    (/\.[jt]sx$/.test(filePath) ||
+      ast.program.body.some(
+        (statement) => t.isImportDeclaration(statement) && statement.source.value === 'react'
+      ) ||
+      extractFeaturesFromNode(anonymousDefault.declaration).hasJsx)
+  ) {
+    const declaration = anonymousDefault.declaration;
+    if (
+      t.isFunctionDeclaration(declaration) ||
+      t.isClassDeclaration(declaration) ||
+      unwrapPreviewFunction(declaration)
+    ) {
+      let name = 'DefaultComponent';
+      while (new RegExp(`\\b${name}\\b`).test(source)) name += '_';
+      const expression = source.slice(declaration.start ?? 0, declaration.end ?? 0);
+      const rewritten =
+        source.slice(0, anonymousDefault.start ?? 0) +
+        `const ${name} = ${expression}; export default ${name};` +
+        source.slice(anonymousDefault.end ?? source.length);
+      return parseFile(filePath, rewritten);
+    }
+  }
+
   let defaultExportName: string | null = null;
 
   traverse(ast, {
     ExportDefaultDeclaration(path) {
       const decl = path.node.declaration;
       if (t.isIdentifier(decl)) defaultExportName = decl.name;
-      else if (t.isFunctionDeclaration(decl) && decl.id) defaultExportName = decl.id.name;
+      else if (t.isCallExpression(decl)) {
+        let inner: t.Node | undefined = decl;
+        while (t.isCallExpression(inner)) inner = inner.arguments[0];
+        if (t.isIdentifier(inner)) defaultExportName = inner.name;
+      } else if (t.isFunctionDeclaration(decl) && decl.id) defaultExportName = decl.id.name;
       else if (t.isClassDeclaration(decl) && decl.id) defaultExportName = decl.id.name;
     },
   });
@@ -352,7 +609,7 @@ export function parseFile(
       const node = path.node;
       if (!node.id || !isComponentName(node.id.name)) return;
       const features = extractFeaturesFromNode(node);
-      if (!features.hasJsx) return;
+      if (!features.hasJsx && !hasRenderReturn(node)) return;
 
       const { propNames, propTypes } = extractProps(node.params, ast);
 
@@ -365,7 +622,7 @@ export function parseFile(
             : 'none';
 
       components.push({
-        id: makeComponentId(),
+        id: componentId(filePath, node.id.name, node.loc?.start.line ?? 0),
         name: node.id.name,
         file: filePath,
         line: node.loc?.start.line ?? 0,
@@ -376,10 +633,13 @@ export function parseFile(
         propTypes,
         eventHandlers: features.eventHandlers,
         classNames: features.classNames,
+        rootTag: features.rootTag,
+        ariaRoles: features.ariaRoles,
         jsxDepth: features.jsxDepth,
         jsxNodeCount: features.jsxNodeCount,
         source: source.slice(node.start ?? 0, node.end ?? 0),
         previewDependencies: extractPreviewDependencies(path, source),
+        previewPropValues: inferPreviewProps(ast, node.id.name, node),
       });
     },
 
@@ -391,37 +651,35 @@ export function parseFile(
         const name = declarator.id.name;
         if (!isComponentName(name)) continue;
 
-        let fn: t.ArrowFunctionExpression | t.FunctionExpression | null = null;
-        let fnNode: t.Node | null = null;
+        const fn = t.isClassExpression(declarator.init)
+          ? declarator.init
+          : unwrapPreviewFunction(declarator.init);
+        const fnNode = fn;
         let fallbackTypeName: string | undefined;
-        if (t.isArrowFunctionExpression(declarator.init)) {
-          fn = declarator.init;
-          fnNode = fn;
-        } else if (t.isFunctionExpression(declarator.init)) {
-          fn = declarator.init;
-          fnNode = fn;
-        } else if (t.isCallExpression(declarator.init)) {
-          const callee = declarator.init.callee;
-          const wrapper = t.isIdentifier(callee) ? callee.name
-            : t.isMemberExpression(callee) && t.isIdentifier(callee.object) && callee.object.name === 'React' && t.isIdentifier(callee.property)
-              ? callee.property.name : '';
-          const inner = declarator.init.arguments[0];
-          if (['forwardRef', 'memo'].includes(wrapper) &&
-              (t.isArrowFunctionExpression(inner) || t.isFunctionExpression(inner))) {
-            fn = inner;
-            fnNode = inner;
-            const propType = declarator.init.typeParameters?.params[wrapper === 'forwardRef' ? 1 : 0];
-            if (propType && t.isTSTypeReference(propType) && t.isIdentifier(propType.typeName)) {
-              fallbackTypeName = propType.typeName.name;
-            }
-          }
+        let wrapped = declarator.init;
+        while (t.isCallExpression(wrapped)) {
+          const callee = wrapped.callee;
+          const wrapper = t.isIdentifier(callee)
+            ? callee.name
+            : t.isMemberExpression(callee) && t.isIdentifier(callee.property)
+              ? callee.property.name
+              : '';
+          const propType = wrapped.typeParameters?.params[wrapper === 'forwardRef' ? 1 : 0];
+          if (propType && t.isTSTypeReference(propType) && t.isIdentifier(propType.typeName))
+            fallbackTypeName = propType.typeName.name;
+          const inner = wrapped.arguments[0];
+          wrapped = t.isExpression(inner) ? inner : null;
         }
         if (!fn || !fnNode) continue;
 
         const features = extractFeaturesFromNode(fnNode);
-        if (!features.hasJsx) continue;
+        if (!features.hasJsx && !hasRenderReturn(fn)) continue;
 
-        const { propNames, propTypes } = extractProps(fn.params, ast, fallbackTypeName);
+        const { propNames, propTypes } = extractProps(
+          t.isClassExpression(fn) ? [] : fn.params,
+          ast,
+          fallbackTypeName
+        );
         const exportType =
           name === defaultExportName
             ? 'default'
@@ -430,21 +688,24 @@ export function parseFile(
               : 'none';
 
         components.push({
-          id: makeComponentId(),
+          id: componentId(filePath, name, node.loc?.start.line ?? 0),
           name,
           file: filePath,
           line: node.loc?.start.line ?? 0,
-          kind: 'arrow',
+          kind: t.isClassExpression(fn) ? 'class' : 'arrow',
           exportType: exportType as ReactComponent['exportType'],
           jsxTags: features.jsxTags,
           propNames,
           propTypes,
           eventHandlers: features.eventHandlers,
           classNames: features.classNames,
+          rootTag: features.rootTag,
+          ariaRoles: features.ariaRoles,
           jsxDepth: features.jsxDepth,
           jsxNodeCount: features.jsxNodeCount,
           source: `${node.kind} ${source.slice(declarator.start ?? 0, declarator.end ?? 0)};`,
           previewDependencies: extractPreviewDependencies(path, source),
+          previewPropValues: inferPreviewProps(ast, name, fn),
         });
       }
     },
@@ -454,7 +715,16 @@ export function parseFile(
       const node = path.node;
       if (!node.id || !isComponentName(node.id.name)) return;
       const features = extractFeaturesFromNode(node);
-      if (!features.hasJsx) return;
+      if (
+        !features.hasJsx &&
+        !node.body.body.some(
+          (member) =>
+            t.isClassMethod(member) &&
+            t.isIdentifier(member.key, { name: 'render' }) &&
+            hasRenderReturn(member)
+        )
+      )
+        return;
 
       const exportType =
         node.id.name === defaultExportName
@@ -464,7 +734,7 @@ export function parseFile(
             : 'none';
 
       components.push({
-        id: makeComponentId(),
+        id: componentId(filePath, node.id.name, node.loc?.start.line ?? 0),
         name: node.id.name,
         file: filePath,
         line: node.loc?.start.line ?? 0,
@@ -475,10 +745,13 @@ export function parseFile(
         propTypes: {},
         eventHandlers: features.eventHandlers,
         classNames: features.classNames,
+        rootTag: features.rootTag,
+        ariaRoles: features.ariaRoles,
         jsxDepth: features.jsxDepth,
         jsxNodeCount: features.jsxNodeCount,
         source: source.slice(node.start ?? 0, node.end ?? 0),
         previewDependencies: extractPreviewDependencies(path, source),
+        previewPropValues: inferPreviewProps(ast, node.id.name, node),
       });
     },
   });
