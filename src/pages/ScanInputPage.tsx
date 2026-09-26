@@ -1,0 +1,48 @@
+// Scan input page: GitHub URL or ZIP upload
+
+import { Link } from 'react-router-dom';
+import { PreviousScans } from '../components/scan/PreviousScans';
+import { ScanForm } from '../components/scan/ScanForm';
+import { WorkflowSteps } from '../components/scan/WorkflowSteps';
+import { DetectiveIcon } from '../components/ui';
+
+export function ScanInputPage() {
+  return (
+    <div className="min-h-screen bg-[#f5f7fb] flex flex-col">
+      {/* Header */}
+      <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
+        <div className="max-w-6xl mx-auto flex items-center gap-3">
+          <Link
+            to="/"
+            aria-label="DupeDetective home"
+            className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            <DetectiveIcon />
+          </Link>
+          <span className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+            DupeDetective
+          </span>
+          <span className="text-sm text-slate-400 ml-1">/ New scan</span>
+        </div>
+      </header>
+
+      <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 sm:px-6 sm:py-12 lg:py-16">
+        <div className="flex flex-col items-center gap-12 lg:gap-16">
+          <section className="w-full max-w-3xl min-w-0 py-6 sm:py-10" aria-label="Start a scan">
+            <div className="mb-4 flex items-baseline justify-between gap-3">
+              <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+                Start a scan
+              </h1>
+              <span className="text-xs text-slate-500">Choose a source</span>
+            </div>
+
+            <ScanForm />
+            <PreviousScans />
+          </section>
+
+          <WorkflowSteps />
+        </div>
+      </main>
+    </div>
+  );
+}

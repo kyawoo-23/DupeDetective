@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@keyframes dd-sheet-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes dd-sheet-backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dd-sheet-panel-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes dd-sheet-panel-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+@media (min-width: 48rem) {
+  .comparison-grid {
+    grid-template-rows: auto auto;
+  }
+
+  .comparison-pane {
+    display: grid;
+    grid-row: span 2;
+    grid-template-rows: auto auto;
+  }
+
+  @supports (grid-template-rows: subgrid) {
+    .comparison-pane {
+      grid-template-rows: subgrid;
+    }
+  }
+}
+
+.dd-sheet-backdrop-enter {
+  animation: dd-sheet-backdrop-in 0.22s ease-out both;
+}
+
+.dd-sheet-backdrop-exit {
+  animation: dd-sheet-backdrop-out 0.2s ease-in both;
+}
+
+.dd-sheet-panel-enter {
+  animation: dd-sheet-panel-in 0.32s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+.dd-sheet-panel-exit {
+  animation: dd-sheet-panel-out 0.24s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dd-sheet-backdrop-enter,
+  .dd-sheet-backdrop-exit,
+  .dd-sheet-panel-enter,
+  .dd-sheet-panel-exit {
+    animation-duration: 0.01ms;
+  }
+}

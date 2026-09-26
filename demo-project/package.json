@@ -1,0 +1,28 @@
+{
+  "name": "ui-components-demo",
+  "version": "1.0.0",
+  "description": "UI component showcase — React 18 + Tailwind CSS v4 + Vite",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "zip": "cd .. && zip -r demo-project.zip demo-project --exclude 'demo-project/node_modules/*' --exclude 'demo-project/dist/*' --exclude 'demo-project/.git/*'"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.6",
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.4.1",
+    "tailwindcss": "^4.1.6",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}
