@@ -10,6 +10,8 @@ import {
 import { useAppStore } from '../../store';
 import type { BacklogItem, Scan } from '../../types';
 import {
+  AgentInstructionIcon,
+  BacklogIcon,
   Button,
   Card,
   ComponentTag,
@@ -39,11 +41,17 @@ export function OutputsPanel({ scan }: OutputsPanelProps) {
   const pendingInstructionCount = backlogItems.filter((item) => item.status === 'pending').length;
 
   const tabs = [
-    { id: 'backlog' as OutputTab, label: 'Backlog', count: backlogItems.length },
+    {
+      id: 'backlog' as OutputTab,
+      label: 'Backlog',
+      icon: <BacklogIcon />,
+      count: backlogItems.length,
+    },
     {
       id: 'instructions' as OutputTab,
       label: 'Agent Instructions',
       mobileLabel: 'Instructions',
+      icon: <AgentInstructionIcon />,
       count: pendingInstructionCount,
     },
   ];

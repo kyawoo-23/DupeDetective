@@ -15,13 +15,13 @@ export function ScanInputPage() {
           <Link
             to="/"
             aria-label="DupeDetective home"
-            className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            className="flex items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
           >
             <DetectiveIcon />
+            <span className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+              DupeDetective
+            </span>
           </Link>
-          <span className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
-            DupeDetective
-          </span>
           <span className="text-sm text-slate-400 ml-1">/ New scan</span>
         </div>
       </header>

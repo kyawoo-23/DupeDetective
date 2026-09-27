@@ -75,8 +75,10 @@ export function renderBacklogMarkdown(scan: Scan): string {
         lines.push(`- \`${item.unchangedNames[i]}\` — \`${item.unchangedPaths[i]}\``);
       }
     }
-    lines.push('');
-    lines.push(`**Note:** ${item.rationale}`);
+    if (item.rationale.trim()) {
+      lines.push('');
+      lines.push(`**Note:** ${item.rationale}`);
+    }
     lines.push('');
     lines.push(`**Suggested next step:** ${item.suggestedNextStep}`);
     if (item.completionNote) {
@@ -123,11 +125,11 @@ export function renderAgentInstruction(scan: Scan, decisionId: string): string {
       lines.push(`- \`${component.name}\` in \`${component.file}\``);
     }
   }
+  lines.push('');
+  if (decision.rationale.trim()) {
+    lines.push('### Note', decision.rationale, '');
+  }
   lines.push(
-    '',
-    '### Note',
-    decision.rationale,
-    '',
     '### Required behavior to preserve',
     '- All existing usages of replaced components must continue to work after the migration.',
     '- The canonical component must support all prop variants used by the replaced components.',

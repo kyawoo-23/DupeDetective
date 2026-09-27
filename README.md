@@ -87,7 +87,7 @@ src/
 
 ## Demo plan
 
-1. Open the app and enter a public React repository URL (e.g. `https://github.com/shadcn-ui/ui`).
+1. Open the app and enter a public React repository URL.
 2. Wait for the scan to complete. Inspect candidate groups and match evidence.
 3. Open a group, compare pairs, adjust mock props, and view previews and source side-by-side.
 4. Record one **Merge** decision for the group, choose the component to keep, add a note, and save.

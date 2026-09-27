@@ -42,18 +42,13 @@ export function decisionSummary(decision: GroupDecision, components: ReactCompon
   return `${head} · ${stay}`;
 }
 
-/** Returns an error message, or null when the roles and note are valid. */
-export function validateDecision(
-  roles: Record<string, MemberRole>,
-  rationale: string
-): string | null {
+/** Returns an error message, or null when member roles are valid. */
+export function validateDecision(roles: Record<string, MemberRole>): string | null {
   const assigned = Object.values(roles);
   const targets = assigned.filter((role) => role === 'target').length;
   const merges = assigned.filter((role) => role === 'merge').length;
   if (targets > 1 || (merges > 0 && targets !== 1)) return 'Choose one component to keep.';
   if (targets === 1 && merges === 0) return 'Choose at least one component to merge into it.';
-  if (merges > 0 && !rationale.trim())
-    return 'Add a note explaining why these components should merge.';
   return null;
 }
 

@@ -235,7 +235,7 @@ export function GroupReviewPanel({
       return;
     }
     const roles = rolesFromDraft(group, draft);
-    const problem = validateDecision(roles, draft.rationale);
+    const problem = validateDecision(roles);
     if (problem) {
       setError(problem);
       return;
@@ -476,7 +476,7 @@ export function GroupReviewPanel({
 
           <TextArea
             name="group-note"
-            label={draft.targetId ? 'Why merge these components?' : 'Note (optional)'}
+            label={draft.targetId ? 'Why merge these components? (optional)' : 'Note (optional)'}
             rows={3}
             value={draft.rationale}
             onChange={(event) => changeDraft({ rationale: event.target.value })}

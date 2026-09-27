@@ -1,5 +1,7 @@
 // Shared UI primitives — barrel re-export
 
+export { AgentInstructionIcon } from './AgentInstructionIcon';
+export { BacklogIcon } from './BacklogIcon';
 export { Badge, DecisionTypeBadge, decisionColors, MigrationStatusBadge } from './Badge';
 export { Button, IconButton, LinkButton, RowButton } from './Button';
 export { Card } from './Card';
