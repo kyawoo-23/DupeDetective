@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DupeDetective — IBM Bob 2.0 Hackathon</title>
+    <meta
+      name="description"
+      content="DupeDetective, by DarkLunar (Kyaw Kyaw Oo), for the IBM Bob 2.0 Hackathon. Review similar React components, then hand the repair to any coding agent."
+    />
+    <meta name="author" content="Kyaw Kyaw Oo" />
+    <meta property="og:title" content="DupeDetective — IBM Bob 2.0 Hackathon" />
+    <meta
+      property="og:description"
+      content="Review similar React components before they become a design-system mess."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #0f172a;
+        --deep: #003b4d;
+        --teal: #0081a3;
+        --teal-deep: #006b87;
+        --mist: #e6f4f7;
+        --line: #c5d5dc;
+        --muted: #52657a;
+        --paper: #f3f6f8;
+        --white: #ffffff;
+        --strong: #0f6b4c;
+        --strong-bg: #e7f6ef;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #d7e1e6;
+        color: var(--ink);
+        font-family: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+
+      body {
+        display: grid;
+        place-items: center;
+        min-height: 100%;
+      }
+
+      .stage {
+        --nav: 44px;
+        --gap: 12px;
+        display: flex;
+        align-items: center;
+        gap: var(--gap);
+        width: min(
+          1384px,
+          calc(100vw - 16px),
+          calc((100dvh - 32px) * 16 / 9 + var(--nav) * 2 + var(--gap) * 2)
+        );
+        max-width: 100%;
+      }
+
+      .nav {
+        flex: none;
+        width: var(--nav);
+        height: var(--nav);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--white);
+        color: var(--deep);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+      }
+
+      .nav:hover:not(:disabled) {
+        background: var(--mist);
+      }
+
+      .nav:focus-visible {
+        outline: 2px solid var(--teal);
+        outline-offset: 2px;
+      }
+
+      .nav:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
+      }
+
+      .deck {
+        container-type: inline-size;
+        flex: 1 1 auto;
+        min-width: 0;
+        aspect-ratio: 16 / 9;
+        max-height: calc(100dvh - 32px);
+        background: var(--paper);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 18px 50px rgba(0, 39, 51, 0.16);
+      }
+
+      .canvas {
+        position: relative;
+        width: 1280px;
+        height: 720px;
+        transform: scale(calc(100cqi / 1280px));
+        transform-origin: top left;
+      }
+
+      .slide {
+        display: none;
+        position: absolute;
+        inset: 0;
+        padding: 56px 72px 72px;
+      }
+
+      .slide.active {
+        display: flex;
+        flex-direction: column;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: 76px;
+        font-weight: 600;
+        letter-spacing: -0.035em;
+        line-height: 0.95;
+        color: var(--deep);
+      }
+
+      h2 {
+        font-size: 44px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+        color: var(--deep);
+        max-width: 18ch;
+      }
+
+      .lede {
+        margin-top: 22px;
+        max-width: 34ch;
+        font-size: 26px;
+        line-height: 1.35;
+        color: var(--ink);
+      }
+
+      .quiet {
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.45;
+      }
+
+      .mark {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: auto;
+      }
+
+      .mark span {
+        font-size: 18px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+
+      .footer-line {
+        margin-top: auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 24px;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .footer-line a {
+        color: inherit;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+      }
+
+      .footer-line a:hover {
+        color: var(--teal-deep);
+      }
+
+      .close-slide .footer-line a:hover {
+        color: #e8f6f9;
+      }
+
+      .footer-line a:focus-visible {
+        outline: 2px solid var(--teal);
+        outline-offset: 3px;
+      }
+
+      .footer-links {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .chrome {
+        position: absolute;
+        left: 72px;
+        right: 72px;
+        bottom: 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        color: var(--muted);
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .chrome button {
+        pointer-events: auto;
+      }
+
+      .dots {
+        display: flex;
+        gap: 6px;
+      }
+
+      .dots button {
+        width: 22px;
+        height: 4px;
+        border: 0;
+        padding: 0;
+        background: #c5d0d6;
+        cursor: pointer;
+      }
+
+      .dots button[aria-current="true"] {
+        background: var(--teal);
+      }
+
+      .deck.dark .chrome {
+        color: #99d3df;
+      }
+
+      .deck.dark .dots button {
+        background: rgba(255, 255, 255, 0.28);
+      }
+
+      .deck.dark .dots button[aria-current="true"] {
+        background: #99d3df;
+      }
+
+      .hackathon-banner {
+        width: 168px;
+        height: auto;
+        display: block;
+      }
+
+      .title-slide {
+        background:
+          linear-gradient(180deg, transparent 0 62%, var(--mist) 62% 100%);
+      }
+
+      .hero-icon {
+        position: absolute;
+        right: 96px;
+        top: 168px;
+        width: 220px;
+        height: 220px;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 48px;
+        align-items: start;
+        margin-top: 36px;
+      }
+
+      .cases {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 8px;
+      }
+
+      .case {
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--teal);
+        padding: 16px 18px;
+      }
+
+      .case strong {
+        display: block;
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--deep);
+      }
+
+      .case span {
+        display: block;
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-top: 36px;
+      }
+
+      .step {
+        background: var(--white);
+        border: 1px solid var(--line);
+        min-height: 240px;
+        padding: 18px 16px 16px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .step em {
+        font-style: normal;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 13px;
+        color: var(--teal-deep);
+      }
+
+      .step strong {
+        display: block;
+        margin: 18px 0 10px;
+        font-size: 26px;
+        letter-spacing: -0.03em;
+        color: var(--deep);
+      }
+
+      .step p {
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.4;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 28px;
+        background: var(--white);
+        font-size: 20px;
+      }
+
+      th,
+      td {
+        text-align: left;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      th {
+        font-weight: 500;
+        color: var(--muted);
+        font-size: 15px;
+      }
+
+      td:last-child,
+      th:last-child {
+        text-align: right;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+      }
+
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+        margin-top: 36px;
+      }
+
+      .panel {
+        background: var(--white);
+        border: 1px solid var(--line);
+        padding: 22px 22px 18px;
+        min-height: 280px;
+      }
+
+      .panel h3 {
+        margin: 0 0 12px;
+        font-size: 24px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        color: var(--deep);
+      }
+
+      .panel li {
+        margin: 10px 0;
+        color: var(--ink);
+        font-size: 18px;
+        line-height: 1.35;
+      }
+
+      .instruction {
+        margin-top: 16px;
+        background: var(--deep);
+        color: #d7eef3;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        padding: 14px 16px;
+      }
+
+      ol.demo {
+        margin: 28px 0 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px 28px;
+      }
+
+      ol.demo li {
+        display: grid;
+        grid-template-columns: 36px 1fr;
+        gap: 12px;
+        align-items: start;
+        font-size: 20px;
+        line-height: 1.3;
+      }
+
+      ol.demo b {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-weight: 500;
+        color: var(--teal);
+        font-size: 18px;
+      }
+
+      .pill {
+        display: inline-block;
+        margin-left: 8px;
+        background: var(--strong-bg);
+        color: var(--strong);
+        font-size: 14px;
+        font-weight: 600;
+        padding: 2px 8px;
+        vertical-align: 2px;
+      }
+
+      .scope {
+        margin-top: 32px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        background: var(--white);
+        border: 1px solid var(--line);
+      }
+
+      .scope div {
+        padding: 22px 24px 8px;
+      }
+
+      .scope div + div {
+        border-left: 1px solid var(--line);
+      }
+
+      .scope h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--muted);
+      }
+
+      .scope li {
+        margin: 0 0 12px;
+        font-size: 20px;
+        color: var(--deep);
+      }
+
+      .close-slide {
+        background: var(--deep);
+        color: #e8f6f9;
+      }
+
+      .close-slide h1,
+      .close-slide .lede {
+        color: #e8f6f9;
+      }
+
+      .close-slide .lede {
+        max-width: 22ch;
+        font-size: 32px;
+      }
+
+      .close-slide .quiet {
+        color: #99d3df;
+        margin-top: 18px;
+        max-width: 36ch;
+      }
+
+      @media (max-width: 720px) {
+        .stage {
+          --nav: 36px;
+          --gap: 8px;
+          width: min(100vw - 8px, calc((100dvh - 16px) * 16 / 9 + var(--nav) * 2 + var(--gap) * 2));
+        }
+
+        .deck {
+          max-height: calc(100dvh - 16px);
+        }
+      }
+
+      @media print {
+        @page {
+          size: 13.333in 7.5in;
+          margin: 0;
+        }
+
+        body {
+          display: block;
+          background: white;
+        }
+
+        .stage {
+          display: block;
+          width: auto;
+        }
+
+        .deck {
+          width: auto;
+          max-height: none;
+          aspect-ratio: auto;
+          overflow: visible;
+          box-shadow: none;
+        }
+
+        .canvas {
+          transform: none;
+          width: auto;
+          height: auto;
+        }
+
+        .slide {
+          display: flex !important;
+          position: relative;
+          break-after: page;
+          min-height: 100vh;
+        }
+
+        .chrome,
+        .nav {
+          display: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          scroll-behavior: auto !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <button type="button" class="nav" id="prev" aria-label="Previous slide">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+          <path d="M11.5 3.5 6 9l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+      <main class="deck" id="deck">
+      <div class="canvas">
+      <section class="slide title-slide active" aria-label="Title">
+        <div class="mark">
+          <img
+            class="hackathon-banner"
+            src="ibm-bob-hackathon.png"
+            alt="IBM Bob 2.0 Hackathon"
+          />
+        </div>
+        <h1>DupeDetective</h1>
+        <p class="lede">Review similar React components before they become a design-system mess.</p>
+        <svg class="hero-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+          <rect width="32" height="32" rx="7" fill="#0081a3" />
+          <rect x="5" y="5" width="14" height="16" rx="3" fill="#99d3df" />
+          <rect x="7.5" y="8.5" width="6.5" height="1.75" rx="0.875" fill="#0081a3" />
+          <rect x="13" y="11" width="14" height="16" rx="3" fill="#ffffff" />
+          <rect x="16" y="14.5" width="8" height="1.75" rx="0.875" fill="#0081a3" />
+          <rect x="16" y="18" width="5.5" height="1.75" rx="0.875" fill="#99d3df" />
+        </svg>
+        <div class="footer-line">
+          <span>DarkLunar · Kyaw Kyaw Oo</span>
+          <div class="footer-links">
+            <a href="https://dupe-detective-one.vercel.app/" target="_blank" rel="noopener noreferrer">Live preview</a>
+            <a href="https://github.com/kyawoo-23/DupeDetective" target="_blank" rel="noopener noreferrer">kyawoo-23/DupeDetective</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" aria-label="Problem">
+        <h2>A reviewer still has to say what the match means.</h2>
+        <div class="split">
+          <p class="lede" style="margin-top: 0">
+            Coding assistants make it easy to add another button, card, or field. Three different situations can look the same in a pull request.
+          </p>
+          <div class="cases">
+            <div class="case">
+              <strong>Accidental copy</strong>
+              <span>The same component, written again.</span>
+            </div>
+            <div class="case">
+              <strong>Intentional variant</strong>
+              <span>A real difference that should stay.</span>
+            </div>
+            <div class="case">
+              <strong>Same shape, different job</strong>
+              <span>Shared structure, unrelated meaning.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" aria-label="User">
+        <h2>Built for the person who has to decide.</h2>
+        <p class="lede">
+          A frontend tech lead or design-system maintainer inspects the evidence, records one decision per group, and hands the cleanup to a coding agent.
+        </p>
+        <div class="two">
+          <div class="panel">
+            <h3>The reviewer does</h3>
+            <ul>
+              <li>Scan a public GitHub repo or a ZIP.</li>
+              <li>Compare source and a sandboxed preview.</li>
+              <li>Choose Merge or Keep separate, with a note.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>The product does</h3>
+            <ul>
+              <li>Find candidates with fixed AST rules.</li>
+              <li>Explain which signals matched.</li>
+              <li>Write a backlog and a repair instruction.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" aria-label="How it works">
+        <h2>Four steps from scan to instruction.</h2>
+        <div class="flow">
+          <article class="step">
+            <em>01</em>
+            <strong>Scan</strong>
+            <p>Public GitHub URL or ZIP. The commit SHA, or a ZIP hash, stays with the scan.</p>
+          </article>
+          <article class="step">
+            <em>02</em>
+            <strong>Group</strong>
+            <p>Pairs join while the average stays at 28 or above. 40 or higher reads as Strong.</p>
+          </article>
+          <article class="step">
+            <em>03</em>
+            <strong>Decide</strong>
+            <p>Keep one component, merge the rest, or keep them separate. Scores only order the queue.</p>
+          </article>
+          <article class="step">
+            <em>04</em>
+            <strong>Hand off</strong>
+            <p>Copy the backlog and the agent instruction. The repo is never written.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="slide" aria-label="Signals">
+        <h2>The evidence is a weighted checklist.</h2>
+        <p class="quiet" style="margin-top: 12px; max-width: 62ch">
+          A token that shows up everywhere counts for less than a rare one. A group score is the average of every pair inside it.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Signal</th>
+              <th>Weight</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>JSX element tree</td>
+              <td>35</td>
+            </tr>
+            <tr>
+              <td>Prop name overlap</td>
+              <td>25</td>
+            </tr>
+            <tr>
+              <td>Event handler overlap</td>
+              <td>15</td>
+            </tr>
+            <tr>
+              <td>Nesting depth</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>Shared class names</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>Component name</td>
+              <td>5</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="slide" aria-label="Bob">
+        <h2>Any coding agent can run the repair.</h2>
+        <div class="two">
+          <div class="panel">
+            <h3>Detection stays deterministic</h3>
+            <ul>
+              <li>AST structure, fixed weights, visible evidence.</li>
+              <li>A match is a candidate for review.</li>
+              <li>A new scan starts with no prior decisions.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>The agent enters at the end</h3>
+            <ul>
+              <li>Copy one instruction, or the whole set.</li>
+              <li>Paste it into Bob, Cursor, or any other coding agent.</li>
+            </ul>
+            <pre class="instruction">## Merge: ActionButton → Button
+
+### Task
+Merge the following components into `Button`.
+
+### Reviewer note
+Same JSX tree and handlers.</pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide" aria-label="Scope">
+        <h2>The boundary is part of the product.</h2>
+        <div class="scope">
+          <div>
+            <h3>In this build</h3>
+            <ul>
+              <li>Public GitHub and ZIP</li>
+              <li>React JavaScript and TypeScript</li>
+              <li>Human merge decisions</li>
+              <li>Copyable agent instructions</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Left for later</h3>
+            <ul>
+              <li>An agent skill that runs the repair</li>
+              <li>Vue, Svelte, Angular</li>
+              <li>Monorepo-aware grouping</li>
+              <li>Project styles in the preview</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="slide close-slide" aria-label="Close">
+        <div class="mark">
+          <svg width="36" height="36" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+            <rect width="32" height="32" rx="7" fill="#0081a3" />
+            <rect x="5" y="5" width="14" height="16" rx="3" fill="#99d3df" />
+            <rect x="7.5" y="8.5" width="6.5" height="1.75" rx="0.875" fill="#0081a3" />
+            <rect x="13" y="11" width="14" height="16" rx="3" fill="#ffffff" />
+            <rect x="16" y="14.5" width="8" height="1.75" rx="0.875" fill="#0081a3" />
+            <rect x="16" y="18" width="5.5" height="1.75" rx="0.875" fill="#99d3df" />
+          </svg>
+          <span style="color: #99d3df">IBM Bob 2.0 Hackathon</span>
+        </div>
+        <h1>Find the lookalikes. Let a person decide. Any coding agent can make the repair.</h1>
+        <p class="quiet">Isolated scans, sandboxed previews, and the repository left as you found it.</p>
+        <div class="footer-line" style="color: #99d3df">
+          <span>DarkLunar · Kyaw Kyaw Oo</span>
+          <a href="https://dupe-detective-one.vercel.app/" target="_blank" rel="noopener noreferrer">Live preview</a>
+        </div>
+      </section>
+
+      <div class="chrome">
+        <span id="count">1 / 9</span>
+        <div class="dots" id="dots"></div>
+      </div>
+      </div>
+    </main>
+      <button type="button" class="nav" id="next" aria-label="Next slide">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+          <path d="M6.5 3.5 12 9l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+    </div>
+
+    <script>
+      const slides = [...document.querySelectorAll(".slide")];
+      const count = document.getElementById("count");
+      const dots = document.getElementById("dots");
+      let index = 0;
+
+      slides.forEach((_, i) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.setAttribute("aria-label", "Slide " + (i + 1));
+        button.addEventListener("click", () => show(i));
+        dots.appendChild(button);
+      });
+
+      const prevBtn = document.getElementById("prev");
+      const nextBtn = document.getElementById("next");
+
+      function show(next) {
+        if (next < 0 || next >= slides.length) return;
+        index = next;
+        slides.forEach((slide, i) => {
+          slide.classList.toggle("active", i === index);
+        });
+        [...dots.children].forEach((dot, i) => {
+          if (i === index) dot.setAttribute("aria-current", "true");
+          else dot.removeAttribute("aria-current");
+        });
+        document.getElementById("deck").classList.toggle(
+          "dark",
+          slides[index].classList.contains("close-slide"),
+        );
+        prevBtn.disabled = index === 0;
+        nextBtn.disabled = index === slides.length - 1;
+        count.textContent = index + 1 + " / " + slides.length;
+        history.replaceState(null, "", "#" + (index + 1));
+      }
+
+      prevBtn.addEventListener("click", () => show(index - 1));
+      nextBtn.addEventListener("click", () => show(index + 1));
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowRight" || event.key === " " || event.key === "PageDown") {
+          event.preventDefault();
+          show(index + 1);
+        } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
+          event.preventDefault();
+          show(index - 1);
+        } else if (event.key === "Home") {
+          show(0);
+        } else if (event.key === "End") {
+          show(slides.length - 1);
+        }
+      });
+
+      const start = Number(location.hash.replace("#", ""));
+      show(Number.isFinite(start) && start > 0 ? start - 1 : 0);
+    </script>
+  </body>
+</html>

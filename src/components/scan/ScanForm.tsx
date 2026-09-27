@@ -4,6 +4,7 @@ import { parseAsString, parseAsStringLiteral, useQueryStates } from 'nuqs';
 import type React from 'react';
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import demoZipUrl from '../../../demo-project.zip?url';
 import { parseGitHubUrl } from '../../lib/fs';
 import { runGitHubScan, runZipScan } from '../../lib/scan';
 import { useAppStore } from '../../store';
@@ -20,7 +21,7 @@ export function ScanForm() {
   const { addScan, setActiveScan } = useAppStore();
   const [query, setQuery] = useQueryStates(scanInputParsers, { history: 'replace' });
   const [zipFile, setZipFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [pending, setPending] = useState<'github' | 'zip' | 'demo' | null>(null);
   const [progress, setProgress] = useState('');
   const [error, setError] = useState<{ source: 'github' | 'zip'; message: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -45,7 +46,7 @@ export function ScanForm() {
       });
       return;
     }
-    setLoading(true);
+    setPending('github');
     try {
       const scan = await runGitHubScan(query.url, query.ref || undefined, setProgress);
       await addScan(scan);
@@ -54,7 +55,7 @@ export function ScanForm() {
     } catch (e) {
       setError({ source: 'github', message: String(e) });
     } finally {
-      setLoading(false);
+      setPending(null);
       setProgress('');
     }
   };
@@ -65,7 +66,7 @@ export function ScanForm() {
       setError({ source: 'zip', message: 'Select a ZIP file first.' });
       return;
     }
-    setLoading(true);
+    setPending('zip');
     try {
       const scan = await runZipScan(zipFile, setProgress);
       await addScan(scan);
@@ -74,7 +75,33 @@ export function ScanForm() {
     } catch (e) {
       setError({ source: 'zip', message: String(e) });
     } finally {
-      setLoading(false);
+      setPending(null);
+      setProgress('');
+    }
+  };
+
+  const loadDemo = async () => {
+    setError(null);
+    setPending('demo');
+    setProgress('Loading demo project…');
+    setQuery({ tab: 'zip', url: null, ref: null });
+    try {
+      const response = await fetch(demoZipUrl);
+      if (!response.ok) {
+        throw new Error('Could not load the demo project.');
+      }
+      const file = new File([await response.blob()], 'demo-project.zip', {
+        type: 'application/zip',
+      });
+      setZipFile(file);
+      const scan = await runZipScan(file, setProgress);
+      await addScan(scan);
+      setActiveScan(scan.id);
+      navigate(`/scan/${scan.id}`);
+    } catch (e) {
+      setError({ source: 'zip', message: String(e) });
+    } finally {
+      setPending(null);
       setProgress('');
     }
   };
@@ -164,7 +191,13 @@ export function ScanForm() {
             </p>
             {error?.source === 'github' && <ErrorBox message={error.message} />}
             {progress && <ProgressMsg message={progress} />}
-            <Button type="submit" size="lg" loading={loading} className="w-full">
+            <Button
+              type="submit"
+              size="lg"
+              loading={pending === 'github'}
+              disabled={pending !== null && pending !== 'github'}
+              className="w-full"
+            >
               Start scan
             </Button>
           </form>
@@ -227,15 +260,29 @@ export function ScanForm() {
             <Button
               type="submit"
               size="lg"
-              loading={loading}
+              loading={pending === 'zip'}
               className="w-full"
-              disabled={!zipFile}
+              disabled={!zipFile || (pending !== null && pending !== 'zip')}
             >
               Start scan
             </Button>
           </form>
         )}
       </Card>
+
+      <div className="mt-4 flex flex-col items-center gap-2">
+        <Button
+          variant="secondary"
+          loading={pending === 'demo'}
+          disabled={pending !== null && pending !== 'demo'}
+          onClick={loadDemo}
+        >
+          Load demo project
+        </Button>
+        <p className="text-center text-xs text-slate-400">
+          Bundled sample with known duplicate components.
+        </p>
+      </div>
     </>
   );
 }
