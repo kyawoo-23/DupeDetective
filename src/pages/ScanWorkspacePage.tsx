@@ -101,7 +101,7 @@ export function ScanWorkspacePage() {
 
   if (!scan) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4 py-12">
+      <div className="dd-site-background min-h-screen flex flex-col items-center justify-center px-4 py-12">
         <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200/90 bg-white px-6 py-8 shadow-sm shadow-slate-900/5 sm:px-8 sm:py-10">
           <Empty
             className="py-6 sm:py-8"
@@ -167,7 +167,7 @@ export function ScanWorkspacePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="dd-site-background min-h-screen flex flex-col">
       {/* Header */}
       <header className="px-4 py-3 sm:px-6 sm:py-4 bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto flex min-w-0 items-center gap-2 sm:gap-3">

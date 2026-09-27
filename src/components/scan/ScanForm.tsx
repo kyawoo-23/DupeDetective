@@ -277,6 +277,7 @@ export function ScanForm() {
           disabled={pending !== null && pending !== 'demo'}
           onClick={loadDemo}
         >
+          <DemoProjectIcon />
           Load demo project
         </Button>
         <p className="text-center text-xs text-slate-400">
@@ -284,6 +285,25 @@ export function ScanForm() {
         </p>
       </div>
     </>
+  );
+}
+
+function DemoProjectIcon() {
+  return (
+    <svg
+      className="size-5 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2.2 2.5h7.3A2.5 2.5 0 0 1 21 10v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7.5Z" />
+      <path d="M12 11v6M9 14h6" />
+    </svg>
   );
 }
 

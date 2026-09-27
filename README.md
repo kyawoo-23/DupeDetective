@@ -1,6 +1,12 @@
 # DupeDetective
 
+<img src="public/icon.svg" alt="DupeDetective icon" width="64" height="64" />
+
 Find and review similar React components in a codebase.
+
+![DupeDetective cover: a detective hat and magnifying glass over similar component trees](public/dupe-detective-cover.png)
+
+[Hackathon slides (PDF)](public/dupe-detective-hackathon.pdf) · [Hackathon demo (video)](docs/dupe-detective-hackathon.mp4)
 
 ## What it does
 

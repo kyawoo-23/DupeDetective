@@ -227,8 +227,47 @@
         pointer-events: none;
       }
 
-      .chrome button {
+      .chrome button,
+      .chrome a {
         pointer-events: auto;
+      }
+
+      .chrome-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .pdf-btn {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: var(--white);
+        color: var(--deep);
+        cursor: pointer;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 6px 14px;
+        text-decoration: none;
+      }
+
+      .pdf-btn:hover {
+        background: var(--mist);
+      }
+
+      .pdf-btn:focus-visible {
+        outline: 2px solid var(--teal);
+        outline-offset: 2px;
+      }
+
+      .deck.dark .pdf-btn {
+        background: rgba(255, 255, 255, 0.12);
+        border-color: rgba(255, 255, 255, 0.28);
+        color: #e8f6f9;
+      }
+
+      .deck.dark .pdf-btn:hover {
+        background: rgba(255, 255, 255, 0.2);
       }
 
       .dots {
@@ -520,44 +559,71 @@
 
       @media print {
         @page {
-          size: 13.333in 7.5in;
+          size: 1280px 720px;
           margin: 0;
+        }
+
+        html,
+        body {
+          width: 1280px;
+          height: auto;
+          margin: 0;
+          background: white;
         }
 
         body {
           display: block;
-          background: white;
         }
 
         .stage {
           display: block;
-          width: auto;
+          width: 1280px;
+          max-width: none;
+          gap: 0;
         }
 
         .deck {
-          width: auto;
+          width: 1280px;
           max-height: none;
           aspect-ratio: auto;
           overflow: visible;
           box-shadow: none;
+          background: transparent;
         }
 
         .canvas {
           transform: none;
-          width: auto;
+          width: 1280px;
           height: auto;
         }
 
         .slide {
           display: flex !important;
+          flex-direction: column;
           position: relative;
+          inset: auto;
+          width: 1280px;
+          height: 720px;
+          min-height: 720px;
+          max-height: 720px;
+          overflow: hidden;
           break-after: page;
-          min-height: 100vh;
+          break-inside: avoid;
+          box-sizing: border-box;
+          background: var(--paper);
+        }
+
+        .slide.title-slide {
+          background: linear-gradient(180deg, transparent 0 62%, var(--mist) 62% 100%);
+        }
+
+        .slide.close-slide {
+          background: var(--deep);
         }
 
         .chrome,
         .nav {
-          display: none;
+          display: none !important;
         }
       }
 
@@ -792,7 +858,12 @@ Same JSX tree and handlers.</pre>
       </section>
 
       <div class="chrome">
-        <span id="count">1 / 9</span>
+        <div class="chrome-left">
+          <span id="count">1 / 9</span>
+          <a class="pdf-btn" id="download-pdf" href="/dupe-detective-hackathon.pdf" download>
+            Download PDF
+          </a>
+        </div>
         <div class="dots" id="dots"></div>
       </div>
       </div>

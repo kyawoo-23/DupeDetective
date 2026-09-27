@@ -18,7 +18,10 @@ When a change may fall outside product scope, read the [PRD](docs/PRD.md).
 - Show React component names in JSX form (e.g. `<FormField />`) in review and queue UI, not bare identifiers.
 - Fix existing popover and sheet overlays in place; do not replace them with a different overlay primitive.
 - Use `react-hot-toast` for success/error toasts, styled to match the app.
+- Keep the app favicon colors aligned with `DetectiveIcon`.
 
 ## Learned Workspace Facts
 
-- DupeDetective is built for the IBM Bob 2.0 Hackathon; the site footer carries that context and the GitHub repo link.
+- DupeDetective is built for the IBM Bob 2.0 Hackathon by team DarkLunar (Kyaw Kyaw Oo); the site footer carries that context and the GitHub repo link, and a live deploy is at https://dupe-detective-one.vercel.app/.
+- The scan start page can load the bundled `demo-project.zip` as a one-click demo.
+- Hackathon slides live at `docs/hackathon-slides.html` (also served from `public/`) and open from the app nav as a fullscreen modal.

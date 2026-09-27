@@ -58,6 +58,15 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.dd-site-background {
+  background-color: #f5f7fb;
+  background-image: url('/dupedetective-background.png');
+  background-position: center top;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-attachment: fixed;
+}
+
 /* Quiet review queue: one row per group. Pair evidence stays in the review view. */
 .queue-card {
   padding: 0.25rem;

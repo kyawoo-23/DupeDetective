@@ -43,14 +43,14 @@ export function PreviousScans() {
   return (
     <div className="mt-6">
       <h2 className="mb-2 text-sm font-semibold text-slate-700">Recent scans</h2>
-      <div className="flex flex-col gap-2">
+      <div className="h-56 space-y-2 overflow-y-auto overscroll-contain pr-0.5">
         {scans
           .slice()
           .reverse()
           .map((scan) => (
             <div
               key={scan.id}
-              className="flex min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white transition-colors hover:border-slate-300"
+              className="flex min-w-0 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white transition-colors hover:border-slate-300"
             >
               <button
                 type="button"

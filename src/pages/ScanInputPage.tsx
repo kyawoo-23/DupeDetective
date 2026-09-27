@@ -1,7 +1,9 @@
 // Scan input page: GitHub URL or ZIP upload
 
 import { Link } from 'react-router-dom';
+import { HackathonDemoVideo } from '../components/scan/HackathonDemoVideo';
 import { PreviousScans } from '../components/scan/PreviousScans';
+import { ProductValueSection } from '../components/scan/ProductValueSection';
 import { ScanForm } from '../components/scan/ScanForm';
 import { WorkflowSteps } from '../components/scan/WorkflowSteps';
 import { DetectiveIcon } from '../components/ui';
@@ -9,7 +11,7 @@ import { HackathonSlidesModal } from '../components/ui/HackathonSlidesModal';
 
 export function ScanInputPage() {
   return (
-    <div className="min-h-screen bg-[#f5f7fb] flex flex-col">
+    <div className="dd-site-background min-h-screen flex flex-col">
       {/* Header */}
       <header className="border-b border-slate-200 bg-white px-4 py-4 sm:px-6">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
@@ -45,6 +47,10 @@ export function ScanInputPage() {
           </section>
 
           <WorkflowSteps />
+
+          <ProductValueSection />
+
+          <HackathonDemoVideo />
         </div>
       </main>
     </div>

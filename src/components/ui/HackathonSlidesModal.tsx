@@ -3,6 +3,7 @@ import { IconButton } from './Button';
 import { footerHelpTrigger, helpLinkTrigger } from './shared';
 
 const SLIDES_URL = '/hackathon-slides.html';
+const SLIDES_PDF_URL = '/dupe-detective-hackathon.pdf';
 
 type HackathonSlidesModalProps = {
   variant?: 'inline' | 'footer' | 'header';
@@ -131,6 +132,13 @@ export function HackathonSlidesModal({
             <span id={titleId} className="sr-only">
               DupeDetective hackathon presentation
             </span>
+            <a
+              href={SLIDES_PDF_URL}
+              download
+              className="inline-flex min-h-11 items-center rounded-md bg-white/90 px-3 text-sm font-medium text-slate-700 shadow-md backdrop-blur-sm hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            >
+              Download PDF
+            </a>
             <IconButton
               aria-label="Close presentation"
               className="bg-white/90 shadow-md backdrop-blur-sm hover:bg-white"
