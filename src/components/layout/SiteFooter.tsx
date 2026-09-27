@@ -17,11 +17,11 @@ export function SiteFooter() {
             <p className="text-base font-semibold tracking-tight text-slate-950">DupeDetective</p>
             <p className="flex items-center gap-2 text-sm text-slate-600">
               <img
-                src="/bob-hackathon.svg"
-                alt="IBM Bob"
-                width={24}
-                height={24}
-                className="size-6 shrink-0 object-contain"
+                src="/ibm-bob-hackathon.png"
+                alt=""
+                width={1024}
+                height={535}
+                className="h-5 w-auto max-w-[7.5rem] shrink-0 object-contain object-left"
               />
               IBM Bob 2.0 Hackathon
             </p>
