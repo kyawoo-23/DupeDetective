@@ -1,4 +1,5 @@
 import { DetectiveIcon } from '../ui/DetectiveIcon';
+import { HackathonSlidesModal } from '../ui/HackathonSlidesModal';
 import { LabelGuide } from '../ui/LabelGuide';
 import { SimilarityHelp } from '../ui/SimilarityHelp';
 import { footerHelpTrigger } from '../ui/shared';
@@ -32,9 +33,10 @@ export function SiteFooter() {
           record merge decisions without sending your code to a model.
         </p>
 
-        <nav aria-label="Guides and source" className="grid gap-2 sm:grid-cols-3">
+        <nav aria-label="Guides and source" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <SimilarityHelp variant="footer" />
           <LabelGuide variant="footer" />
+          <HackathonSlidesModal variant="footer" />
           <a
             href={REPO_URL}
             target="_blank"

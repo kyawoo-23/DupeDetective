@@ -4,6 +4,7 @@ import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { OutputsPanel } from '../components/outputs/OutputsPanel';
 import { DetectiveIcon, Empty, LinkButton, Tabs } from '../components/ui';
+import { HackathonSlidesModal } from '../components/ui/HackathonSlidesModal';
 import { ComponentsTab } from '../components/workspace/ComponentsTab';
 import { ErrorsTab } from '../components/workspace/ErrorsTab';
 import { DEFAULT_MIN_SCORE, QueueTab, SCORE_OPTIONS } from '../components/workspace/QueueTab';
@@ -183,10 +184,11 @@ export function ScanWorkspacePage() {
               ? `${scan.source.url.replace('https://github.com/', '')} @ ${scan.source.commitSha.slice(0, 7)}`
               : scan.source.filename}
           </span>
-          <div className="ml-auto flex shrink-0 items-center gap-4">
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
             <span className="hidden lg:inline text-xs text-slate-400">
               {scan.components.length} components · {scan.groups.length} candidate groups
             </span>
+            <HackathonSlidesModal variant="header" />
             <LinkButton
               to="/"
               variant="primary"

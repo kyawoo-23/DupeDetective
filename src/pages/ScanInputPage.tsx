@@ -5,6 +5,7 @@ import { PreviousScans } from '../components/scan/PreviousScans';
 import { ScanForm } from '../components/scan/ScanForm';
 import { WorkflowSteps } from '../components/scan/WorkflowSteps';
 import { DetectiveIcon } from '../components/ui';
+import { HackathonSlidesModal } from '../components/ui/HackathonSlidesModal';
 
 export function ScanInputPage() {
   return (
@@ -23,6 +24,9 @@ export function ScanInputPage() {
             </span>
           </Link>
           <span className="text-sm text-slate-400 ml-1">/ New scan</span>
+          <div className="ml-auto">
+            <HackathonSlidesModal variant="header" />
+          </div>
         </div>
       </header>
 
